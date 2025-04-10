@@ -1,6 +1,6 @@
 # talk2dom
 
-**talk2dom** is a focused utility that solves one of the hardest problems in browser automation testing:
+**talk2dom** is a focused utility that solves one of the hardest problems in browser automation and UI testing:
 
 > ✅ **Finding the correct UI element on a page.**
 
@@ -8,7 +8,7 @@
 
 ## 🧠 Why `talk2dom`
 
-In most automated testing, the real challenge is not how to click or type — it's how to **locate the right element**.
+In most automated testing or LLM-driven web navigation tasks, the real challenge is not how to click or type — it's how to **locate the right element**.
 
 Think about it:
 
@@ -32,6 +32,21 @@ Think about it:
 
 ---
 
+## 🤔 Why Selenium?
+
+While there are many modern tools for controlling browsers (like Playwright or Puppeteer), **Selenium remains the most robust and cross-platform solution**, especially when dealing with:
+
+- ✅ Safari (WebKit)
+- ✅ Firefox
+- ✅ Mobile browsers
+- ✅ Cross-browser testing grids
+
+These tools often have limited support for anything beyond Chrome-based browsers. Selenium, by contrast, has battle-tested support across all major platforms and continues to be the industry standard in enterprise and CI/CD environments.
+
+That’s why `talk2dom` is designed to integrate directly with Selenium — it works where the real-world complexity lives.
+
+---
+
 ## 📦 Installation
 
 ```bash
@@ -43,24 +58,21 @@ pip install talk2dom
 ## 🔍 Usage Example
 
 ```python
-from talk2dom import get_html
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
 
-# Get full page HTML
-html = get_html(driver)
+from talk2dom import get_locator
 
-# OR get specific element HTML
-html = get_html(some_element)
-
-# Send HTML + natural language instruction to your LLM
-instruction = "Click the login button"
-prompt = f"User wants to: '{instruction}'\nHTML:\n{html}"
-
-# LLM returns something like:
-# css: button.login
-# or
-# xpath: /html/body/div[2]/form/button[1]
-
-# You parse and use the selector
+driver = webdriver.Chrome()
+driver.get("http://www.python.org")
+assert "Python" in driver.title
+by, value = get_locator(driver, "Find the Search box")
+elem = driver.find_element(by, value)
+elem.clear()
+elem.send_keys("pycon")
+elem.send_keys(Keys.RETURN)
+assert "No results found." not in driver.page_source
+driver.close()
 ```
 
 ---
@@ -83,7 +95,7 @@ prompt = f"User wants to: '{instruction}'\nHTML:\n{html}"
 
 ## 📄 License
 
-MIT
+Apache 2.0
 
 ---
 

@@ -1,0 +1,30 @@
+[project]
+name = "talk2dom"
+version = "0.1.2"
+description = "A utility to help you locate UI elements using HTML and natural language."
+authors = [{ name = "Jian", email = "fengjian1114@gmail.com" }]
+license = "Apache-2.0"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    "langchain>=0.3.23,<1.0.0",
+    "langchain-community>=0.3.21,<1.0.0",
+    "langchain-core>=0.3.51,<1.0.0",
+    "langchain-openai>=0.3.12,<1.0.0",
+    "openai>=1.72.0,<2.0.0",
+    "pydantic>=2.11.3,<3.0.0",
+    "selenium>=4.31.0,<5.0.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/itbanque/talk2dom"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"talk2dom" = ["prompts/*.txt"]
