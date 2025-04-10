@@ -10,6 +10,7 @@ on:
       - '.gitignore'
       - '**/*.md'
       - 'pyproject.toml'
+      - '**/*.html'
 
 jobs:
   black:
