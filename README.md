@@ -57,6 +57,14 @@ pip install talk2dom
 
 ## 🔍 Usage Example
 
+### Make sure you have OPENAI_API_KEY
+
+```bash
+export OPENAI_API_KEY="..."
+```
+
+### Sample Code
+
 ```python
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -96,6 +104,12 @@ driver.close()
 ## 📄 License
 
 Apache 2.0
+
+---
+
+## Contributing
+
+Please read [CONTRIBUTING.md](https://github.com/itbanque/talk2dom/blob/main/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
 ---
 

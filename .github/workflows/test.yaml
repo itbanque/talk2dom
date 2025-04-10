@@ -3,6 +3,12 @@ name: Sanity Test
 
 on:
   push:
+    paths-ignore:
+      - 'README.md'
+      - '.github/**'
+      - 'CONTRIBUTING.md'
+      - '.gitignore'
+      - '**/*.md'
 
 jobs:
   black:
