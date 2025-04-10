@@ -1,5 +1,10 @@
 # talk2dom
 
+![PyPI](https://img.shields.io/pypi/v/talk2dom)
+![Stars](https://img.shields.io/github/stars/itbanque/talk2dom?style=social)
+![License](https://img.shields.io/github/license/itbanque/talk2dom)
+![CI](https://github.com/itbanque/talk2dom/actions/workflows/test.yaml/badge.svg)
+
 **talk2dom** is a focused utility that solves one of the hardest problems in browser automation and UI testing:
 
 > ✅ **Finding the correct UI element on a page.**
