@@ -93,7 +93,7 @@ driver.close()
 
 ## ✨ Philosophy
 
-> Our goal is not to control the browser — Selenium already does that well.  
+> Our goal is not to control the browser — you still control your browser. 
 > Our goal is to **find the right DOM element**, so you can tell the browser what to do.
 
 ---
