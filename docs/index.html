@@ -28,7 +28,7 @@
       color: #d1d5db;
     }
     .container {
-      max-width: 900px;
+      max-width: min(900px, 100%);
       margin: 40px auto;
       padding: 0 20px;
     }
@@ -69,13 +69,14 @@
 <body>
   <header>
     <h1><strong>talk2dom</strong></h1>
-    <p><strong>Stop writing XPath.</strong> Use natural language + an LLM to locate any element.</p>
+    <p><strong>Find any web element with just one sentence.</strong><br/>Natural language meets browser automation.</p>
   </header>
   <div class="container">
     <h2>🧠 What is talk2dom?</h2>
     <p><strong>Just describe the element</strong> — talk2dom uses an LLM to analyze your current HTML and return the correct selector.</p>
 
     <h2>🆚 Before vs After</h2>
+    <h4>🔧 Traditional XPath approach</h4>
     <h3>❌ Before: Manually writing selectors</h3>
     <p style="color: #dc2626;"><strong>Manual XPath + fragile By.NAME.</strong></p>
     <pre><code>from selenium import webdriver
@@ -92,6 +93,7 @@ elem.send_keys(Keys.RETURN)
 assert "No results found." not in driver.page_source
 driver.close()</code></pre>
 
+    <h4>🧠 AI-powered natural language query</h4>
     <h3>✅ After: Natural language with talk2dom</h3>
     <p style="color: #16a34a;"><strong>1 line natural language → AI selector</strong></p>
     <pre><code>from selenium import webdriver
@@ -122,6 +124,7 @@ driver.close()</code></pre>
     <h2>📦 Install</h2>
     <p><strong>Start using in 10 seconds:</strong></p>
     <pre><code>pip install talk2dom</code></pre>
+    <p>You can use OpenAI, Groq, or any provider supported by LangChain-compatible LLMs.</p>
 
     <div class="cta">
       <a href="https://github.com/itbanque/talk2dom" target="_blank">
