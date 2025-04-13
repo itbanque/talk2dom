@@ -3,6 +3,7 @@ from talk2dom import get_locator
 # talk2dom
 
 ![PyPI](https://img.shields.io/pypi/v/talk2dom)
+[![PyPI Downloads](https://static.pepy.tech/badge/talk2dom)](https://pepy.tech/projects/talk2dom)
 ![Stars](https://img.shields.io/github/stars/itbanque/talk2dom?style=social)
 ![License](https://img.shields.io/github/license/itbanque/talk2dom)
 ![CI](https://github.com/itbanque/talk2dom/actions/workflows/test.yaml/badge.svg)
@@ -109,7 +110,7 @@ by, value = get_locator(driver, "Find the search box", model="llama-3.3-70b-vers
 
 ## ✨ Philosophy
 
-> Our goal is not to control the browser — Selenium already does that well.  
+> Our goal is not to control the browser — you still control your browser. 
 > Our goal is to **find the right DOM element**, so you can tell the browser what to do.
 
 ---
