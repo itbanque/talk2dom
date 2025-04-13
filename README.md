@@ -1,3 +1,5 @@
+from talk2dom import get_locator
+
 # talk2dom
 
 ![PyPI](https://img.shields.io/pypi/v/talk2dom)
@@ -62,13 +64,14 @@ pip install talk2dom
 
 ## 🔍 Usage Example
 
-### Make sure you have OPENAI_API_KEY
+### Basic Usage
+#### Make sure you have OPENAI_API_KEY
 
 ```bash
 export OPENAI_API_KEY="..."
 ```
 
-### Sample Code
+#### Sample Code
 
 ```python
 from selenium import webdriver
@@ -86,6 +89,20 @@ elem.send_keys("pycon")
 elem.send_keys(Keys.RETURN)
 assert "No results found." not in driver.page_source
 driver.close()
+```
+
+### Free Models
+
+You can use `talk2dom` with free models like `llama-3.3-70b-versatile` from [Groq](https://groq.com/).
+
+#### Make sure you have a Groq API key
+```bash
+export GROQ_API_KEY="..."
+```
+
+### Sample Code with Groq
+```python
+by, value = get_locator(driver, "Find the search box", model="llama-3.3-70b-versatile", model_provider="groq")
 ```
 
 ---
