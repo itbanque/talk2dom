@@ -1,5 +1,4 @@
-
-# talk2dom
+# talk2dom — Locate Web Elements with One Sentence
 
 ![PyPI](https://img.shields.io/pypi/v/talk2dom)
 [![PyPI Downloads](https://static.pepy.tech/badge/talk2dom)](https://pepy.tech/projects/talk2dom)
@@ -106,17 +105,17 @@ export GROQ_API_KEY="..."
 
 ### Sample Code with Groq
 ```python
+# Use LLaMA-3 model from Groq (fast and free)
 by, value = get_locator(driver, "Find the search box", model="llama-3.3-70b-versatile", model_provider="groq")
 ```
 
 ### Full page vs Scoped element queries
 The `get_locator()` function can be used to query the entire page or a specific element.
-you can pass either a full Selenium `driver` or a specific `WebElement` parameter to specify a scoped element.
-
+You can pass either a full Selenium `driver` or a specific `WebElement` to scope the locator to part of the page.
 #### Why/When use `WebElement` instead of `driver`?
 
-1. Reduce Token Size: Passing a small subtree instead of the full page save tokens. reduces latency and cost.
-2. Better Scope Accuracy: Usefull when the target element exists in a complex structure.
+1. Reduce Token Size: Passing a small subtree instead of the full page saves tokens, a small subtree instead of the full page saves tokens, reduces latency and cost.
+2. Better Scope Accuracy: Useful when the target element exists in a deeply nested or isolated structure (e.g., modals, side panels, embedded components).
 
 No need to extract HTML manually - talk2dom automatically reads `outerHTML` from any `WebElement` you pass in.
 #### sample code
@@ -161,3 +160,5 @@ Please read [CONTRIBUTING.md](https://github.com/itbanque/talk2dom/blob/main/CON
 
 We’d love to hear how you're using `talk2dom` in your AI agents or testing flows.  
 Feel free to open issues or discussions!
+
+⭐️ If you find this project useful, please consider giving it a star!
