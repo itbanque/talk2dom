@@ -114,7 +114,7 @@ The `get_locator()` function can be used to query the entire page or a specific 
 You can pass either a full Selenium `driver` or a specific `WebElement` to scope the locator to part of the page.
 #### Why/When use `WebElement` instead of `driver`?
 
-1. Reduce Token Size: Passing a small subtree instead of the full page saves tokens, a small subtree instead of the full page saves tokens, reduces latency and cost.
+1. Reduce Token Size: Passing a small subtree instead of the full page saves tokens, reduces latency and cost.
 2. Better Scope Accuracy: Useful when the target element exists in a deeply nested or isolated structure (e.g., modals, side panels, embedded components).
 
 No need to extract HTML manually - talk2dom automatically reads `outerHTML` from any `WebElement` you pass in.
@@ -138,7 +138,6 @@ element = modal.find_element(by, val)
 ## ✅ Key Features
 
 - 📍 Locator-first mindset: focus on *where*, not *how*
-- 🔁 Retry wrapper for flaky pages
 - 🧠 Built for LLM-agent workflows
 - 🧩 Shadow DOM friendly (you handle traversal, we return selectors)
 

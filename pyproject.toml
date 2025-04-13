@@ -1,6 +1,6 @@
 [project]
 name = "talk2dom"
-version = "0.1.4"
+version = "0.1.5"
 description = "A utility to help you locate UI elements using HTML and natural language."
 authors = [{ name = "Jian", email = "fengjian1114@gmail.com" }]
 license = "Apache-2.0"
