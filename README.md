@@ -66,6 +66,10 @@ pip install talk2dom
 ## 🔍 Usage Example
 
 ### Basic Usage
+
+By default, talk2dom uses gpt-4o-mini to balance performance and cost.
+However, during testing, gpt-4o has shown the best performance for this task.
+
 #### Make sure you have OPENAI_API_KEY
 
 ```bash
@@ -94,7 +98,7 @@ driver.close()
 
 ### Free Models
 
-You can use `talk2dom` with free models like `llama-3.3-70b-versatile` from [Groq](https://groq.com/).
+You can also use `talk2dom` with free models like `llama-3.3-70b-versatile` from [Groq](https://groq.com/).
 
 #### Make sure you have a Groq API key
 ```bash
