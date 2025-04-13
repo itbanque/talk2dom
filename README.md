@@ -1,5 +1,7 @@
 # talk2dom — Locate Web Elements with One Sentence
 
+> 📚 Supported Doc Languages | [🇺🇸 English](./README.md) | [🇨🇳 中文](./README.zh.md)
+
 ![PyPI](https://img.shields.io/pypi/v/talk2dom)
 [![PyPI Downloads](https://static.pepy.tech/badge/talk2dom)](https://pepy.tech/projects/talk2dom)
 ![Stars](https://img.shields.io/github/stars/itbanque/talk2dom?style=social)
@@ -33,7 +35,6 @@ Think about it:
 - Extracting clean HTML from Selenium `WebDriver` or any `WebElement`
 - Formatting it for LLM consumption (e.g. GPT-4, Claude, etc.)
 - Returning minimal, clear selectors (like `xpath: ...` or `css: ...`)
-- Supporting retry logic for unstable DOM conditions
 - Playing nicely with Shadow DOM traversal (you handle it your way)
 
 ---
