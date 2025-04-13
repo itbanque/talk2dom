@@ -1,4 +1,3 @@
-from talk2dom import get_locator
 
 # talk2dom
 
@@ -108,6 +107,24 @@ export GROQ_API_KEY="..."
 ### Sample Code with Groq
 ```python
 by, value = get_locator(driver, "Find the search box", model="llama-3.3-70b-versatile", model_provider="groq")
+```
+
+### Full page vs Scoped element queries
+The `get_locator()` function can be used to query the entire page or a specific element.
+you can pass either a full Selenium `driver` or a specific `WebElement` parameter to specify a scoped element.
+
+#### Why/When use `WebElement` instead of `driver`?
+
+1. Reduce Token Size: Passing a small subtree instead of the full page save tokens. reduces latency and cost.
+2. Better Scope Accuracy: Usefull when the target element exists in a complex structure.
+
+No need to extract HTML manually - talk2dom automatically reads `outerHTML` from any `WebElement` you pass in.
+#### sample code
+
+```python
+modal = driver.find_element(By.CLASS_NAME, "modal")
+by, val = get_locator(modal, "Click the confirm button")
+element = modal.find_element(by, val)
 ```
 
 ---
