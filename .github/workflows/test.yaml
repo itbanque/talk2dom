@@ -26,5 +26,11 @@ jobs:
         - name: Install Dependencies
           run: |
             pip install black
+            pip install -r requirements.txt
         - name: Run Black
           run: black --check .
+        - name: Run Unittest
+          run: |
+            pip install pytest
+            export PYTHONPATH=$(pwd)
+            pytest tests
