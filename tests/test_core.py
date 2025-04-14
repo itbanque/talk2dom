@@ -1,5 +1,4 @@
 from talk2dom.core import Selector
-from talk2dom.core import call_llm
 
 
 def test_selector_model():
@@ -10,13 +9,15 @@ def test_selector_model():
 
 def test_call_llm_with_fake_html(monkeypatch):
     def fake_llm(*args, **kwargs):
-        return Selector(selector_type="css selector", selector_value="button.submit")
+        return Selector(selector_type="xpath", selector_value="//button")
 
-    monkeypatch.setattr("talk2dom.core.call_llm", fake_llm)
-    result = call_llm(
+    from talk2dom import core
+
+    monkeypatch.setattr(core, "call_llm", fake_llm)
+    result = core.call_llm(
         "Click the button",
         "<html><body><button>Click me</button></body></html>",
         "gpt-4o",
         "openai",
     )
-    assert result.selector_type == "css selector"
+    assert result.selector_type == "xpath"
