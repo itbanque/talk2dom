@@ -14,6 +14,9 @@
 
 ---
 
+## Video Demo
+![video](https://private-user-images.githubusercontent.com/4516800/433477138-480595a1-7ddf-4bda-a159-f34e3fbbdd35.mov?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDQ2NTA3MzYsIm5iZiI6MTc0NDY1MDQzNiwicGF0aCI6Ii80NTE2ODAwLzQzMzQ3NzEzOC00ODA1OTVhMS03ZGRmLTRiZGEtYTE1OS1mMzRlM2ZiYmRkMzUubW92P1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MDQxNCUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTA0MTRUMTcwNzE2WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NTAwMWQ4OWQwZTNmNTQ0OWNhZDVjYTkwN2Y4YjhkZGUyYzE0OTg0NDA2Zjg0YzZmNTFhNTUzNjJkMzdlMDQyYyZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.z0fNWtr-rwSYE7coK8oaOt15fHdwmJFGEBRreYdCqvw)
+
 ## 🧠 Why `talk2dom`
 
 In most automated testing or LLM-driven web navigation tasks, the real challenge is not how to click or type — it's how to **locate the right element**.
@@ -81,13 +84,12 @@ export OPENAI_API_KEY="..."
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
-from talk2dom import get_locator
+from talk2dom import get_element
 
 driver = webdriver.Chrome()
 driver.get("http://www.python.org")
 assert "Python" in driver.title
-by, value = get_locator(driver, "Find the Search box")
-elem = driver.find_element(by, value)
+elem = get_element(driver, "Find the Search box")
 elem.clear()
 elem.send_keys("pycon")
 elem.send_keys(Keys.RETURN)
@@ -107,24 +109,23 @@ export GROQ_API_KEY="..."
 ### Sample Code with Groq
 ```python
 # Use LLaMA-3 model from Groq (fast and free)
-by, value = get_locator(driver, "Find the search box", model="llama-3.3-70b-versatile", model_provider="groq")
+elem = get_element(driver, "Find the search box", model="llama-3.3-70b-versatile", model_provider="groq")
 ```
 
 ### Full page vs Scoped element queries
-The `get_locator()` function can be used to query the entire page or a specific element.
+The `get_element()` function can be used to query the entire page or a specific element.
 You can pass either a full Selenium `driver` or a specific `WebElement` to scope the locator to part of the page.
 #### Why/When use `WebElement` instead of `driver`?
 
-1. Reduce Token Size: Passing a small subtree instead of the full page saves tokens, reduces latency and cost.
-2. Better Scope Accuracy: Useful when the target element exists in a deeply nested or isolated structure (e.g., modals, side panels, embedded components).
+1. Reduce Token Usage — Passing a smaller HTML subtree (like a modal or container) instead of the full page saves LLM tokens, reducing latency and cost.
+2. Improve Locator Accuracy — Scoping the query helps the LLM focus on relevant content, which is especially helpful for nested or isolated components like popups, drawers, and cards.
 
-No need to extract HTML manually - talk2dom automatically reads `outerHTML` from any `WebElement` you pass in.
+You don’t need to extract HTML manually — `talk2dom` will automatically use `outerHTML` from any `WebElement` you pass in.
 #### sample code
 
 ```python
 modal = driver.find_element(By.CLASS_NAME, "modal")
-by, val = get_locator(modal, "Click the confirm button")
-element = modal.find_element(by, val)
+elem = get_element(driver, "Find the confirm button", element=modal)
 ```
 
 ---
