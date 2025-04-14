@@ -1,3 +1,5 @@
+from talk2dom import get_element
+
 # talk2dom — 用自然语言定位网页元素
 > 📚 文档语言 | [🇺🇸 English](./README.md) | [🇨🇳 中文](./README.zh.md)
 
@@ -70,13 +72,12 @@ export OPENAI_API_KEY="..."
 
 ```python
 from selenium import webdriver
-from talk2dom import get_locator
+from talk2dom import get_element
 
 driver = webdriver.Chrome()
 driver.get("http://www.python.org")
 
-by, value = get_locator(driver, "找到搜索框")
-elem = driver.find_element(by, value)
+elem = get_element(driver, "找到搜索框")
 elem.send_keys("pycon")
 ```
 
@@ -91,7 +92,7 @@ export GROQ_API_KEY="..."
 ```
 
 ```python
-by, value = get_locator(driver, "找到搜索框", model="llama-3.3-70b-versatile", model_provider="groq")
+by, value = get_element(driver, "找到搜索框", model="llama-3.3-70b-versatile", model_provider="groq")
 ```
 
 ---
