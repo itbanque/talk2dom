@@ -14,8 +14,9 @@
 
 ---
 
-## Video Demo
-![video](https://github.com/user-attachments/assets/480595a1-7ddf-4bda-a159-f34e3fbbdd35)
+<video src="https://github.com/user-attachments/assets/6f634788-7f58-43e5-8e50-d6283d99a31b" controls width="600">
+  Your browser does not support the video tag.
+</video>
 
 ## 🧠 Why `talk2dom`
 
