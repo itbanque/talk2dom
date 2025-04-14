@@ -48,7 +48,7 @@ def call_llm(user_instruction, html, model, model_provider) -> Selector:
 def highlight_element(driver, element, duration=2):
     style = (
         "box-shadow: 0 0 10px 3px rgba(255, 0, 0, 0.7);"
-        "outline: 2px dashed red;"
+        "outline: 2px solid red;"
         "background-color: rgba(255, 230, 200, 0.3);"
         "transition: all 0.2s ease-in-out;"
     )
@@ -98,8 +98,8 @@ def get_locator(element, description, model="gpt-4o-mini", model_provider="opena
 
 def get_element(
     driver,
-    element,
     description,
+    element=None,
     model="gpt-4o-mini",
     model_provider="openai",
     duration=None,
@@ -107,18 +107,23 @@ def get_element(
     """
     Get the element using LLM.
     :param driver: The WebDriver instance.
-    :param element: The element to locate.
     :param description: The description of the element.
+    :param element: The element to locate.
     :param model: The model to use for the LLM.
     :param model_provider: The model provider to use for the LLM.
     :param duration: The duration to highlight the element.
     :return: The located element.
     """
-    selector_type, selector_value = get_locator(
-        element, description, model, model_provider
-    )
-    element = driver.find_element(
+    if element is None:
+        selector_type, selector_value = get_locator(
+            driver, description, model, model_provider
+        )
+    else:
+        selector_type, selector_value = get_locator(
+            element, description, model, model_provider
+        )
+    elem = driver.find_element(
         selector_type, selector_value
     )  # Ensure the page is loaded
-    highlight_element(driver, element, duration=duration)
-    return element
+    highlight_element(driver, elem, duration=duration)
+    return elem
