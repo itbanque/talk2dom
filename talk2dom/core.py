@@ -1,4 +1,5 @@
 import logging
+import time
 from pydantic import BaseModel, Field
 
 from langchain.chat_models import init_chat_model
@@ -44,14 +45,38 @@ def call_llm(user_instruction, html, model, model_provider) -> Selector:
     return response
 
 
+def highlight_element(driver, element, duration=2):
+    style = (
+        "box-shadow: 0 0 10px 3px rgba(255, 0, 0, 0.7);"
+        "outline: 2px dashed red;"
+        "background-color: rgba(255, 230, 200, 0.3);"
+        "transition: all 0.2s ease-in-out;"
+    )
+    original_style = element.get_attribute("style")
+    driver.execute_script(f"arguments[0].setAttribute('style', '{style}')", element)
+    if duration:
+        time.sleep(duration)
+        driver.execute_script(
+            f"arguments[0].setAttribute('style', `{original_style}`)", element
+        )
+
+
 # ------------------ Public API ------------------
 
 
-def get_locator(driver, description, model="gpt-4o-mini", model_provider="openai"):
+def get_locator(element, description, model="gpt-4o-mini", model_provider="openai"):
+    """
+    Get the locator for the element using LLM.
+    :param element: The element to locate.
+    :param description: The description of the element.
+    :param model: The model to use for the LLM.
+    :param model_provider: The model provider to use for the LLM.
+    :return: The locator type and value.
+    """
     html = (
-        driver.page_source
-        if isinstance(driver, WebDriver)
-        else driver.get_attribute("outerHTML")
+        element.page_source
+        if isinstance(element, WebDriver)
+        else element.get_attribute("outerHTML")
     )
     selector = call_llm(description, html, model, model_provider)
 
@@ -69,3 +94,31 @@ def get_locator(driver, description, model="gpt-4o-mini", model_provider="openai
         "Located by: %s, selector: %s", selector.selector_type, selector.selector_value
     )
     return selector.selector_type, selector.selector_value.strip()
+
+
+def get_element(
+    driver,
+    element,
+    description,
+    model="gpt-4o-mini",
+    model_provider="openai",
+    duration=None,
+):
+    """
+    Get the element using LLM.
+    :param driver: The WebDriver instance.
+    :param element: The element to locate.
+    :param description: The description of the element.
+    :param model: The model to use for the LLM.
+    :param model_provider: The model provider to use for the LLM.
+    :param duration: The duration to highlight the element.
+    :return: The located element.
+    """
+    selector_type, selector_value = get_locator(
+        element, description, model, model_provider
+    )
+    element = driver.find_element(
+        selector_type, selector_value
+    )  # Ensure the page is loaded
+    highlight_element(driver, element, duration=duration)
+    return element

@@ -1,3 +1,3 @@
-from .core import get_locator
+from .core import get_locator, get_element
 
-__all__ = ["get_locator"]
+__all__ = ["get_locator", "get_element"]
