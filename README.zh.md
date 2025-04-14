@@ -1,4 +1,3 @@
-from talk2dom import get_element
 
 # talk2dom — 用自然语言定位网页元素
 > 📚 文档语言 | [🇺🇸 English](./README.md) | [🇨🇳 中文](./README.zh.md)
