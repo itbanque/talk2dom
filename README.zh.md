@@ -91,7 +91,7 @@ export GROQ_API_KEY="..."
 ```
 
 ```python
-by, value = get_element(driver, "找到搜索框", model="llama-3.3-70b-versatile", model_provider="groq")
+elem = get_element(driver, "找到搜索框", model="llama-3.3-70b-versatile", model_provider="groq")
 ```
 
 ---
