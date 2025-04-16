@@ -26,10 +26,10 @@ def create_prompt_messages():
         "Open Google and search for 'talk2dom'\n\n"
         "Example output:\n"
         "[\n"
-        '  {"action": "open", "target": "https://www.google.com"},\n'
-        '  {"action": "type", "target": "Search input box", "value": "talk2dom"},\n'
-        '  {"action": "click", "target": "Search button"}\n'
-        '  {"action": "wait", "value": "5"}\n'
+        '  {{"action": "open", "target": "https://www.google.com"}},\n'
+        '  {{"action": "type", "target": "Search input box", "value": "talk2dom"}},\n'
+        '  {{"action": "click", "target": "Search button"}},\n'
+        '  {{"action": "wait", "value": "5"}}\n'
         "]"
     )
     return [("system", system_message), ("human", "{instruction}")]
@@ -39,8 +39,8 @@ class BrowserStep(BaseModel):
     action: Literal["open", "click", "type", "assert_text", "wait"] = Field(
         ..., description="Action to perform"
     )
-    target: str = Field(
-        ..., description="What to act on or navigate to, must be natual language"
+    target: str | None = Field(
+        None, description="What to act on or navigate to, must be natual language"
     )
     value: str | None = Field(
         None,
@@ -55,25 +55,7 @@ class BrowserActions(BaseModel):
 PROMPT = ChatPromptTemplate.from_messages(create_prompt_messages())
 
 
-def run_instruction(
-    instruction, headless=False, model="gpt-4o-mini", provider="openai"
-):
-    print(f"💻 Using model: {model} (provider: {provider})")
-    llm = init_chat_model(model=model, model_provider=provider, temperature=0)
-    chain = llm.bind_tools([BrowserActions]) | PydanticToolsParser(
-        tools=[BrowserActions]
-    )
-    ba: BrowserActions = chain.invoke(instruction)[0]
-    steps = ba.steps
-    print("🧠 Instruction parsed into the following steps:")
-    for i, step in enumerate(steps, 1):
-        print(
-            f"  Step {i}: {step.action.upper()} → target: {step.target}, value: {step.value}"
-        )
-
-    print("🚀 Launching browser...")
-    driver = webdriver.Chrome(options=_chrome_opts(headless))
-    actions = ActionChain(driver, model=model, model_provider=provider)
+def run_steps(actions, steps, close=True):
     try:
         for step in steps:
             print(f"▶️ Executing: {step.action.upper()} on '{step.target}'")
@@ -88,7 +70,6 @@ def run_instruction(
             elif step.action == "wait":
                 print(f"⏱️ Waiting for {step.value} seconds...")
                 actions.wait(int(step.value))
-        print("✅ All steps completed successfully.")
     except KeyboardInterrupt:
         print("❌ Instruction interrupted by user.")
         exit(2)
@@ -104,8 +85,9 @@ def run_instruction(
         )
         exit(1)
     finally:
-        print("🧹 Closing browser.")
-        actions.close()
+        if close:
+            print("🧹 Closing browser.")
+            actions.close()
 
 
 def _chrome_opts(headless=False):
@@ -117,23 +99,90 @@ def _chrome_opts(headless=False):
     return opts
 
 
+def default_mode(args):
+    print("💬 Starting talk2dom CLI Mode...")
+    driver = webdriver.Chrome(options=_chrome_opts(args.headless))
+    actions = ActionChain(driver, model=args.model, model_provider=args.provider)
+    print(f"💻 Using model: {args.model} (provider: {args.provider})")
+    llm = init_chat_model(model=args.model, model_provider=args.provider, temperature=0)
+    chain = (
+        PROMPT
+        | llm.bind_tools([BrowserActions])
+        | PydanticToolsParser(tools=[BrowserActions])
+    )
+    ba: BrowserActions = chain.invoke({"instruction": args.instruction})[0]
+    steps = ba.steps
+
+    run_steps(
+        actions=actions,
+        steps=steps,
+    )
+    print("✅ All steps completed successfully.")
+
+
+def chat_mode(args):
+    print("💬 Starting talk2dom Chat Mode (with context)...")
+    print("Type browser commands. Type 'exit' to quit.\n")
+
+    driver = webdriver.Chrome(options=_chrome_opts(args.headless))
+    actions = ActionChain(driver, model=args.model, model_provider=args.provider)
+    print(f"💻 Using model: {args.model} (provider: {args.provider})")
+    llm = init_chat_model(model=args.model, model_provider=args.provider, temperature=0)
+    chain = (
+        PROMPT
+        | llm.bind_tools([BrowserActions])
+        | PydanticToolsParser(tools=[BrowserActions])
+    )
+
+    while True:
+        try:
+            user_input = input("You: ").strip()
+            if user_input.lower() in {"exit", "quit"}:
+                break
+            ba: BrowserActions = chain.invoke({"instruction": user_input})[0]
+            steps = ba.steps
+            run_steps(
+                actions=actions,
+                steps=steps,
+                close=False,
+            )
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            continue
+    print("✅ All steps completed successfully.")
+    print("🧹 Chat session ended.")
+    driver.quit()
+    exit(0)
+
+
 def main():
     import argparse
 
     parser = argparse.ArgumentParser(
         description="Run a natural language browser instruction."
     )
-    parser.add_argument("instruction", type=str, help="Natural language command to run")
+    parser.add_argument(
+        "instruction", type=str, nargs="?", help="Natural language command to run"
+    )
     parser.add_argument(
         "--headless", action="store_true", help="Run browser in headless mode"
     )
-    parser.add_argument("--model", default="gpt-4o", help="LLM model to use")
+    parser.add_argument("--model", default="gpt-4o-mini", help="LLM model to use")
     parser.add_argument("--provider", default="openai", help="Model provider")
-    args = parser.parse_args()
-
-    run_instruction(
-        instruction=args.instruction,
-        headless=args.headless,
-        model=args.model,
-        provider=args.provider,
+    parser.add_argument(
+        "--playground", action="store_true", help="Enter interactive playground mode"
     )
+    parser.add_argument(
+        "--chat", action="store_true", help="Start interactive chat mode with context"
+    )
+    args = parser.parse_args()
+    if not args.chat and not args.instruction:
+        parser.error(
+            "The following arguments are required: instruction (unless using --chat)"
+        )
+    if args.chat:
+        chat_mode(args)
+
+    default_mode(args)
