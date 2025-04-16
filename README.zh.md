@@ -1,73 +1,100 @@
+# talk2dom — 一句话定位网页元素
 
-# talk2dom — 用自然语言定位网页元素
-> 📚 文档语言 | [English](./README.md) | [中文](./README.zh.md)
+> 📚 [English](./README.md) | [中文](./README.zh.md)
 
 ![PyPI](https://img.shields.io/pypi/v/talk2dom)
-[![PyPI Downloads](https://static.pepy.tech/badge/talk2dom)](https://pepy.tech/projects/talk2dom)
+[![PyPI 下载量](https://static.pepy.tech/badge/talk2dom)](https://pepy.tech/projects/talk2dom)
 ![Stars](https://img.shields.io/github/stars/itbanque/talk2dom?style=social)
 ![License](https://img.shields.io/github/license/itbanque/talk2dom)
 ![CI](https://github.com/itbanque/talk2dom/actions/workflows/test.yaml/badge.svg)
 
-**talk2dom** 是一个专注于网页自动化测试中最困难环节的工具：
+**talk2dom** 是一个专注于解决浏览器自动化和 UI 测试中最困难问题的工具：
 
-> ✅ **准确找到你想操作的 UI 元素。**
-
----
-
-## 🧠 为什么用 talk2dom？
-
-在写自动化脚本或构建 LLM Agent 时，真正难的不是“怎么点”，而是：
-
-> **怎么找到要点的那个元素。**
-
-举个例子：
-- 点击按钮很简单 —— *前提是你知道 selector*
-- 输入文字也不难 —— *但你得先找到那个 input*
-- 然而，DOM 中成百上千个标签、嵌套结构、Shadow DOM…… 让你寸步难行
-
-**talk2dom 就是为了解决这个问题而生的。**
+> ✅ **在页面中定位正确的 UI 元素。**
 
 ---
 
-## 🎯 它能做什么？
+[![在 YouTube 上观看演示](https://img.youtube.com/vi/6S3dOdWj5Gg/0.jpg)](https://youtu.be/6S3dOdWj5Gg)
 
-talk2dom 通过以下方式帮你定位元素：
 
-- 从 Selenium `WebDriver` 或 `WebElement` 获取 HTML
-- 用自然语言 + LLM 生成简洁的 selector（`xpath:...` 或 `css:...`）
-- 可以用于 Shadow DOM 的子节点（你负责 traversal）
+## 🧠 为什么使用 `talk2dom`
 
----
+在自动化测试或 LLM 驱动的网页操作任务中，最大的问题通常不是点击或输入，而是**找到正确的元素**。
 
-## 🤔 为什么选 Selenium？
+想象一下：
 
-虽然现在有很多操作浏览器的工具（Playwright、Puppeteer 等），但：
+- 点击按钮很简单 — *前提是*你知道它的选择器。
+- 输入字段也不难 — *前提是*你已经定位到正确的输入框。
+- 但在上百个 `<div>`、`<span>` 和深度嵌套的 Shadow DOM 中找出正确的目标？这才是真正的挑战。
 
-- ✅ Selenium 对 Safari / Firefox / 移动端支持最好
-- ✅ 企业级测试中仍以 Selenium 为主
-- ✅ Selenium 支持跨平台远程浏览器（如 Grid）
-
-所以 talk2dom 专为 Selenium 打造。
+**`talk2dom` 正是为了解决这个问题而设计的。**
 
 ---
 
-## 📦 安装
+## 🎯 它的功能
+
+`talk2dom` 可通过以下方式帮助你定位元素：
+
+- 理解自然语言指令并将其转为浏览器操作  
+- 支持单次执行或持续交互会话  
+- 使用 LLM（如 GPT-4 或 Claude）分析实时 HTML 和用户意图  
+- 根据指令和模型响应提供灵活输出：操作、选择器，或两者兼有  
+- 支持桌面与移动浏览器，通过 Selenium 实现
+
+---
+
+## 🤔 为什么选择 Selenium？
+
+虽然 Playwright、Puppeteer 等现代浏览器控制工具层出不穷，**但 Selenium 依然是最健壮、最具跨平台支持的解决方案**，尤其在以下环境中：
+
+- ✅ Safari（WebKit）
+- ✅ Firefox
+- ✅ 移动浏览器
+- ✅ 跨浏览器测试网格
+
+许多工具对非 Chrome 浏览器的支持有限，而 Selenium 在所有主流平台上都有经过验证的稳定表现，是企业和 CI/CD 环境的标准方案。
+
+这也是为什么 `talk2dom` 直接集成 Selenium —— 因为它能应对真实复杂场景。
+
+---
+
+## 📦 安装方式
 
 ```bash
 pip install talk2dom
 ```
 
 ---
+## 💡 自然语言指令模式
 
-## 🔍 使用示例
+你可以在命令行中直接运行自然语言指令：
 
-### 基础用法
+```bash
+talk2dom "open https://python.org and search for pycon"
+```
 
-默认使用 OpenAI 的 `gpt-4o-mini`（低成本模型）
+非常适合测试执行器、Agent 后端、CI/CD 流水线或轻量自动化脚本。
+
+---
+
+## 🧩 基于代码的 ActionChain 模式
+
+如果你偏好使用结构化 Python 控制浏览器，`ActionChain` 让你可以逐步操作浏览器。
+
+### 基本用法
+
+talk2dom 默认使用 gpt-4o-mini，在性能与成本间实现良好平衡。
+测试中显示，gpt-4o 表现最佳。
+
+#### 确保设置 OPENAI_API_KEY
 
 ```bash
 export OPENAI_API_KEY="..."
 ```
+
+注意：所用模型需支持 Chat Completion API，并遵循 OpenAI 兼容协议。
+
+#### 示例代码
 
 ```python
 from selenium import webdriver
@@ -86,72 +113,58 @@ ActionChain(driver) \
     .close()
 ```
 
----
-
 ### 免费模型支持
 
-你也可以用来自 Groq 的免费 LLM，如 `llama-3.3-70b-versatile`
-
-```bash
-export GROQ_API_KEY="..."
-```
-
-```python
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from talk2dom import ActionChain
-
-driver = webdriver.Chrome()
-# Use LLaMA-3 model from Groq (fast and free)
-ActionChain(driver, model="llama-3.3-70b-versatile", model_provider="groq") \
-    .open("http://www.python.org") \
-    .find("Find the Search box") \
-    .type("pycon") \
-    .type(Keys.RETURN) \
-    .assert_page_not_contains("No results found.") \
-    .close()
-```
+talk2dom 也支持来自 [Groq](https://groq.com/) 的免费模型，如 `llama-3.3-70b-versatile`
 
 ---
 
-### 输入对象类型
+### 整页 vs 范围查询
+`find()` 可用于查询整个页面，也可仅查询指定元素。
+你可以传入完整的 Selenium `driver`，或传入 `WebElement` 限定查询范围。
 
-你可以传入：
-- ✅ `WebDriver`（整个页面）
-- ✅ `WebElement`（局部 HTML）
+#### 何时使用 `WebElement` 替代 `driver`
 
-传入子结构可以：
-- ✅ 更精准（适合 modal/popup 等组件）
-- ✅ 减少 token 消耗（提升速度、降低成本）
+1. 减少 Token 使用 —— 只传较小的 HTML 子树（如弹窗）可节省 Token，降低延迟与成本。
+2. 提升定位准确性 —— 限定范围有助于模型专注于相关内容，尤其适用于嵌套组件如弹窗、抽屉、卡片等。
 
----
-
-## ✨ 设计理念
-
-> 我们不控制浏览器。
->
-> 你来操作浏览器，talk2dom 帮你**找到目标元素的位置**。
+无需手动提取 HTML —— `talk2dom` 会自动使用你传入的元素的 `outerHTML`。
 
 ---
 
-## ✅ 特性概览
+## ✨ 我们的理念
 
-- 📍 定位优先，控制自理
-- 🤖 面向 LLM-Agent 流程设计
-- 🧩 Shadow DOM 友好（返回可用 selector）
+> 我们的理念很简单：用自然语言描述你要做的事 —— 其余交给浏览器来执行。
 
 ---
 
-## 📄 协议
+## ✅ 核心特性
+
+- 💬 使用自然语言控制浏览器  
+- 🔁 支持多步持久交互会话  
+- 🧠 基于 LLM 的高级意图理解  
+- 🧩 输出可操作的 XPath/CSS 选择器 或 可直接执行的操作链  
+- 🧪 内建断言与步骤校验  
+- 💡 适用于 CLI 脚本或对话交互式应用
+
+---
+
+## 📄 许可证
 
 Apache 2.0
 
 ---
 
-## 💬 反馈 & 贡献
+## 贡献方式
 
-欢迎提交 [Issue](https://github.com/itbanque/talk2dom/issues)、[PR](https://github.com/itbanque/talk2dom/pulls) 或参与讨论！
+请阅读 [CONTRIBUTING.md](https://github.com/itbanque/talk2dom/blob/main/CONTRIBUTING.md) 了解行为准则及提交 Pull Request 流程。
 
-GitHub 项目地址：👉 https://github.com/itbanque/talk2dom
+---
 
-如果你觉得这个工具有用，请给个 ⭐️ 鼓励！
+## 💬 问题或建议？
+
+欢迎分享你在 AI agent 或测试流程中如何使用 `talk2dom`！  
+欢迎提交 Issue 或开启讨论。  
+如果你正在用 `talk2dom` 构建有趣项目，也欢迎在 GitHub 上 @我们！  
+⭐️ 如果觉得有帮助，别忘了给我们点个 Star！
+

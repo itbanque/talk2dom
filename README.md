@@ -35,10 +35,11 @@ Think about it:
 
 `talk2dom` helps you locate elements by:
 
-- Extracting clean HTML from Selenium `WebDriver` or any `WebElement`
-- Formatting it for LLM consumption (e.g. GPT-4, Claude, etc.)
-- Returning minimal, clear selectors (like `xpath: ...` or `css: ...`)
-- Playing nicely with Shadow DOM traversal (you handle it your way)
+- Understands natural language instructions and turns them into browser actions  
+- Supports single-command execution or persistent interactive sessions  
+- Uses LLMs (like GPT-4 or Claude) to analyze live HTML and intent  
+- Returns flexible output: actions, selectors, or both — providing flexible outputs: actions, selectors, or both — depending on the instruction and model response  
+- Compatible with both desktop and mobile browsers via Selenium
 
 ---
 
@@ -64,8 +65,21 @@ pip install talk2dom
 ```
 
 ---
+## 💡 Natural Language Instruction Mode
 
-## 🔍 Usage Example
+You can run natural language instructions directly from the CLI:
+
+```bash
+talk2dom "open https://python.org and search for pycon"
+```
+
+Ideal for test runners, agent backends, CI/CD pipelines, and quick automation scripts.
+
+---
+
+## 🧩 Code-Based ActionChain Mode
+
+For developers and testers who prefer structured Python control, `ActionChain` lets you drive the browser step-by-step.
 
 ### Basic Usage
 
@@ -77,6 +91,8 @@ However, during testing, gpt-4o has shown the best performance for this task.
 ```bash
 export OPENAI_API_KEY="..."
 ```
+
+Note: All models must support chat completion APIs and follow OpenAI-compatible schema.
 
 #### Sample Code
 
@@ -101,27 +117,6 @@ ActionChain(driver) \
 
 You can also use `talk2dom` with free models like `llama-3.3-70b-versatile` from [Groq](https://groq.com/).
 
-#### Make sure you have a Groq API key
-```bash
-export GROQ_API_KEY="..."
-```
-
-### Sample Code with Groq
-```python
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from talk2dom import ActionChain
-
-driver = webdriver.Chrome()
-# Use LLaMA-3 model from Groq (fast and free)
-ActionChain(driver, model="llama-3.3-70b-versatile", model_provider="groq") \
-    .open("http://www.python.org") \
-    .find("Find the Search box") \
-    .type("pycon") \
-    .type(Keys.RETURN) \
-    .assert_page_not_contains("No results found.") \
-    .close()
-```
 
 ### Full page vs Scoped element queries
 The `find()` function can be used to query the entire page or a specific element.
@@ -132,38 +127,24 @@ You can pass either a full Selenium `driver` or a specific `WebElement` to scope
 2. Improve Locator Accuracy — Scoping the query helps the LLM focus on relevant content, which is especially helpful for nested or isolated components like popups, drawers, and cards.
 
 You don’t need to extract HTML manually — `talk2dom` will automatically use `outerHTML` from any `WebElement` you pass in.
-#### sample code
-
-```python
-from selenium import webdriver
-
-from talk2dom import ActionChain
-
-driver = webdriver.Chrome()
-
-ActionChain(driver) \
-    .open("...") \
-    .find("Find the popup modal") \
-    .wait(2) \
-    .find("Find the confirm button", scope="element") \
-    .assert_page_not_contains("...") \
-    .close()
-```
 
 ---
 
+
 ## ✨ Philosophy
 
-> Our goal is not to control the browser — you still control your browser. 
-> Our goal is to **find the right DOM element**, so you can tell the browser what to do.
+> Our philosophy is simple: describe what you want in plain language — and let the browser do the rest.
 
 ---
 
 ## ✅ Key Features
 
-- 📍 Locator-first mindset: focus on *where*, not *how*
-- 🧠 Built for LLM-agent workflows
-- 🧩 Shadow DOM friendly (you handle traversal, we return selectors)
+- 💬 Natural language interface to control the browser  
+- 🔁 Persistent session for multi-step interactions  
+- 🧠 LLM-powered understanding of high-level intent  
+- 🧩 Outputs: actionable XPath/CSS selectors or ready-to-run browser steps  
+- 🧪 Built-in assertions and step validations  
+- 💡 Works with both CLI scripts and interactive chat
 
 ---
 
@@ -182,6 +163,6 @@ Please read [CONTRIBUTING.md](https://github.com/itbanque/talk2dom/blob/main/CON
 ## 💬 Questions or ideas?
 
 We’d love to hear how you're using `talk2dom` in your AI agents or testing flows.  
-Feel free to open issues or discussions!
-
+Feel free to open issues or discussions!  
+You can also tag us on GitHub if you’re building something interesting with `talk2dom`!  
 ⭐️ If you find this project useful, please consider giving it a star!
