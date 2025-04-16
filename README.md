@@ -14,9 +14,8 @@
 
 ---
 
-<video src="https://github.com/user-attachments/assets/6f634788-7f58-43e5-8e50-d6283d99a31b" autoplay muted loop playsinline width="600">
-  Your browser does not support the video tag.
-</video>
+[![Watch the demo on YouTube](https://img.youtube.com/vi/6S3dOdWj5Gg/0.jpg)](https://youtu.be/6S3dOdWj5Gg)
+
 
 ## 🧠 Why `talk2dom`
 
