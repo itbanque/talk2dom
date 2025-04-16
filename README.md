@@ -1,6 +1,6 @@
 # talk2dom — Locate Web Elements with One Sentence
 
-> 📚 Supported Doc Languages | [🇺🇸 English](./README.md) | [🇨🇳 中文](./README.zh.md)
+> 📚 [English](./README.md) | [中文](./README.zh.md)
 
 ![PyPI](https://img.shields.io/pypi/v/talk2dom)
 [![PyPI Downloads](https://static.pepy.tech/badge/talk2dom)](https://pepy.tech/projects/talk2dom)
@@ -85,17 +85,17 @@ export OPENAI_API_KEY="..."
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
-from talk2dom import get_element
+from talk2dom import ActionChain
 
 driver = webdriver.Chrome()
-driver.get("http://www.python.org")
-assert "Python" in driver.title
-elem = get_element(driver, "Find the Search box")
-elem.clear()
-elem.send_keys("pycon")
-elem.send_keys(Keys.RETURN)
-assert "No results found." not in driver.page_source
-driver.close()
+
+ActionChain(driver) \
+    .open("http://www.python.org") \
+    .find("Find the Search box") \
+    .type("pycon") \
+    .type(Keys.RETURN) \
+    .assert_page_not_contains("No results found.") \
+    .close()
 ```
 
 ### Free Models
@@ -109,12 +109,23 @@ export GROQ_API_KEY="..."
 
 ### Sample Code with Groq
 ```python
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from talk2dom import ActionChain
+
+driver = webdriver.Chrome()
 # Use LLaMA-3 model from Groq (fast and free)
-elem = get_element(driver, "Find the search box", model="llama-3.3-70b-versatile", model_provider="groq")
+ActionChain(driver, model="llama-3.3-70b-versatile", model_provider="groq") \
+    .open("http://www.python.org") \
+    .find("Find the Search box") \
+    .type("pycon") \
+    .type(Keys.RETURN) \
+    .assert_page_not_contains("No results found.") \
+    .close()
 ```
 
 ### Full page vs Scoped element queries
-The `get_element()` function can be used to query the entire page or a specific element.
+The `find()` function can be used to query the entire page or a specific element.
 You can pass either a full Selenium `driver` or a specific `WebElement` to scope the locator to part of the page.
 #### Why/When use `WebElement` instead of `driver`?
 
@@ -125,8 +136,19 @@ You don’t need to extract HTML manually — `talk2dom` will automatically use 
 #### sample code
 
 ```python
-modal = driver.find_element(By.CLASS_NAME, "modal")
-elem = get_element(driver, "Find the confirm button", element=modal)
+from selenium import webdriver
+
+from talk2dom import ActionChain
+
+driver = webdriver.Chrome()
+
+ActionChain(driver) \
+    .open("...") \
+    .find("Find the popup modal") \
+    .wait(2) \
+    .find("Find the confirm button", scope="element") \
+    .assert_page_not_contains("...") \
+    .close()
 ```
 
 ---

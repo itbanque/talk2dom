@@ -130,18 +130,18 @@ driver.close()</code></pre>
     <p style="color: #16a34a;"><strong>1 line natural language → AI selector</strong></p>
     <pre><code>from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from talk2dom import get_element
+
+from talk2dom import ActionChain
 
 driver = webdriver.Chrome()
-driver.get("http://www.python.org")
-assert "Python" in driver.title
-elem = get_element(driver, "Find the Search box") # <- talk2dom
-elem.clear()
-elem.send_keys("pycon")
-elem.send_keys(Keys.RETURN)
 
-assert "No results found." not in driver.page_source
-driver.close()</code></pre>
+ActionChain(driver) \
+    .open("http://www.python.org") \
+    .find("Find the Search box") \
+    .type("pycon") \
+    .type(Keys.RETURN) \
+    .assert_page_not_contains("No results found.") \
+    .close()</code></pre>
 
     <h2>✨ Features</h2>
     <ul>

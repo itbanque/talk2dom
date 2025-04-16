@@ -1,6 +1,6 @@
 
 # talk2dom — 用自然语言定位网页元素
-> 📚 文档语言 | [🇺🇸 English](./README.md) | [🇨🇳 中文](./README.zh.md)
+> 📚 文档语言 | [English](./README.md) | [中文](./README.zh.md)
 
 ![PyPI](https://img.shields.io/pypi/v/talk2dom)
 [![PyPI Downloads](https://static.pepy.tech/badge/talk2dom)](https://pepy.tech/projects/talk2dom)
@@ -71,13 +71,19 @@ export OPENAI_API_KEY="..."
 
 ```python
 from selenium import webdriver
-from talk2dom import get_element
+from selenium.webdriver.common.keys import Keys
+
+from talk2dom import ActionChain
 
 driver = webdriver.Chrome()
-driver.get("http://www.python.org")
 
-elem = get_element(driver, "找到搜索框")
-elem.send_keys("pycon")
+ActionChain(driver) \
+    .open("http://www.python.org") \
+    .find("Find the Search box") \
+    .type("pycon") \
+    .type(Keys.RETURN) \
+    .assert_page_not_contains("No results found.") \
+    .close()
 ```
 
 ---
@@ -91,7 +97,19 @@ export GROQ_API_KEY="..."
 ```
 
 ```python
-elem = get_element(driver, "找到搜索框", model="llama-3.3-70b-versatile", model_provider="groq")
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from talk2dom import ActionChain
+
+driver = webdriver.Chrome()
+# Use LLaMA-3 model from Groq (fast and free)
+ActionChain(driver, model="llama-3.3-70b-versatile", model_provider="groq") \
+    .open("http://www.python.org") \
+    .find("Find the Search box") \
+    .type("pycon") \
+    .type(Keys.RETURN) \
+    .assert_page_not_contains("No results found.") \
+    .close()
 ```
 
 ---
