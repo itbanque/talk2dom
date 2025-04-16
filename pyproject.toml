@@ -1,6 +1,6 @@
 [project]
 name = "talk2dom"
-version = "0.1.7"
+version = "0.1.8"
 description = "A utility to help you locate UI elements using HTML and natural language."
 authors = [{ name = "Jian", email = "fengjian1114@gmail.com" }]
 license = "Apache-2.0"
@@ -19,6 +19,9 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/itbanque/talk2dom"
+
+[project.scripts]
+talk2dom = "talk2dom.cli:main"
 
 [build-system]
 requires = ["setuptools", "wheel"]
