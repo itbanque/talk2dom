@@ -98,6 +98,16 @@ class ActionChain:
         ), f"Unexpected text found in page: '{text}'"
         return self
 
+    def extract_text(self):
+        if not self._current_element:
+            raise AssertionError("No element selected to extract text from")
+        return self._current_element.text.strip()
+
+    def extract_attribute(self, attribute: str):
+        if not self._current_element:
+            raise AssertionError("No element selected to extract attribute from")
+        return self._current_element.get_attribute(attribute).strip()
+
     def close(self):
         self.driver.quit()
         return self

@@ -6,6 +6,7 @@ from langchain.chat_models import init_chat_model
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
 
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.common.by import By
 
 from pathlib import Path
 
@@ -74,7 +75,7 @@ def get_locator(element, description, model="gpt-4o-mini", model_provider="opena
     :return: The locator type and value.
     """
     html = (
-        element.page_source
+        element.find_element(By.TAG_NAME, "body").get_attribute("outerHTML")
         if isinstance(element, WebDriver)
         else element.get_attribute("outerHTML")
     )

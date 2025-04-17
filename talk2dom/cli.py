@@ -17,7 +17,8 @@ def create_prompt_messages():
         "- click: click a visible element\n"
         "- type: type into an input field\n"
         "- wait: wait for a specified duration\n"
-        "- assert_text: check that text appears on the page\n\n"
+        "- assert_text: check that text appears on the page\n"
+        "- extract_text: get the visible text of an element\n\n"
         "Each step should include:\n"
         "- action (string)\n"
         "- target (string): description of element or URL\n"
@@ -29,15 +30,16 @@ def create_prompt_messages():
         '  {{"action": "open", "target": "https://www.google.com"}},\n'
         '  {{"action": "type", "target": "Search input box", "value": "talk2dom"}},\n'
         '  {{"action": "click", "target": "Search button"}},\n'
-        '  {{"action": "wait", "value": "5"}}\n'
+        '  {{"action": "wait", "value": "5"}},\n'
+        '  {{"action": "extract_text", "target": "Price section"}}\n'
         "]"
     )
     return [("system", system_message), ("human", "{instruction}")]
 
 
 class BrowserStep(BaseModel):
-    action: Literal["open", "click", "type", "assert_text", "wait"] = Field(
-        ..., description="Action to perform"
+    action: Literal["open", "click", "type", "assert_text", "wait", "extract_text"] = (
+        Field(..., description="Action to perform")
     )
     target: str | None = Field(
         None, description="What to act on or navigate to, must be natual language"
@@ -70,11 +72,14 @@ def run_steps(actions, steps, close=True):
             elif step.action == "wait":
                 print(f"⏱️ Waiting for {step.value} seconds...")
                 actions.wait(int(step.value))
+            elif step.action == "extract_text":
+                text = actions.find(step.target).extract_text()
+                print(f"📋 Extracted text: {text}")
     except KeyboardInterrupt:
         print("❌ Instruction interrupted by user.")
         exit(2)
     except Exception as error:
-        print(f"❌ Error occurred: {error}")
+        print(f"❌ Error occurred: {error} at step: {step}")
         print("⚠️ Please check the instruction and try again.")
         print("💡 Note: GPT-4o has shown the best performance in testing.")
         print(

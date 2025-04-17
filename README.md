@@ -133,7 +133,8 @@ You don’t need to extract HTML manually — `talk2dom` will automatically use 
 
 ## ✨ Philosophy
 
-> Our philosophy is simple: describe what you want in plain language — and let the browser do the rest.
+> Our goal is not to control the browser — you still control your browser. 
+> Our goal is to **find the right DOM element**, so you can tell the browser what to do.
 
 ---
 
