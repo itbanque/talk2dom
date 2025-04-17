@@ -65,17 +65,6 @@ pip install talk2dom
 ```
 
 ---
-## 💡 Natural Language Instruction Mode
-
-You can run natural language instructions directly from the CLI:
-
-```bash
-talk2dom "open https://python.org and search for pycon"
-```
-
-Ideal for test runners, agent backends, CI/CD pipelines, and quick automation scripts.
-
----
 
 ## 🧩 Code-Based ActionChain Mode
 

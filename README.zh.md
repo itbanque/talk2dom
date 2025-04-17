@@ -65,17 +65,6 @@ pip install talk2dom
 ```
 
 ---
-## 💡 自然语言指令模式
-
-你可以在命令行中直接运行自然语言指令：
-
-```bash
-talk2dom "open https://python.org and search for pycon"
-```
-
-非常适合测试执行器、Agent 后端、CI/CD 流水线或轻量自动化脚本。
-
----
 
 ## 🧩 基于代码的 ActionChain 模式
 
