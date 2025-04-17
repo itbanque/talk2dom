@@ -1,5 +1,7 @@
 import logging
 import time
+from bs4 import BeautifulSoup
+from typing import Literal
 from pydantic import BaseModel, Field
 
 from langchain.chat_models import init_chat_model
@@ -23,7 +25,9 @@ def load_prompt(file_path: str) -> str:
 
 
 class Selector(BaseModel):
-    selector_type: str = Field(
+    selector_type: Literal[
+        "id", "tag name", "name", "class name", "xpath", "css selector"
+    ] = Field(
         description="Either 'id', 'tag name', 'name', 'class name', 'xpath' or 'css selector'"
     )
     selector_value: str = Field(description="The selector string")
@@ -79,6 +83,8 @@ def get_locator(element, description, model="gpt-4o-mini", model_provider="opena
         if isinstance(element, WebDriver)
         else element.get_attribute("outerHTML")
     )
+    soup = BeautifulSoup(html, "html.parser")
+    html = soup.prettify()
     selector = call_llm(description, html, model, model_provider)
 
     if selector.selector_type not in [

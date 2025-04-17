@@ -104,18 +104,27 @@ def _chrome_opts(headless=False):
     return opts
 
 
-def default_mode(args):
-    print("💬 Starting talk2dom CLI Mode...")
-    driver = webdriver.Chrome(options=_chrome_opts(args.headless))
-    actions = ActionChain(driver, model=args.model, model_provider=args.provider)
-    print(f"💻 Using model: {args.model} (provider: {args.provider})")
-    llm = init_chat_model(model=args.model, model_provider=args.provider, temperature=0)
+def inference(model, model_provider, instruction, temperature=0.2):
+    llm = init_chat_model(
+        model=model, model_provider=model_provider, temperature=temperature
+    )
     chain = (
         PROMPT
         | llm.bind_tools([BrowserActions])
         | PydanticToolsParser(tools=[BrowserActions])
     )
-    ba: BrowserActions = chain.invoke({"instruction": args.instruction})[0]
+    ba: BrowserActions = chain.invoke({"instruction": instruction})[0]
+    return ba
+
+
+def default_mode(args):
+    print("💬 Starting talk2dom CLI Mode...")
+    driver = webdriver.Chrome(options=_chrome_opts(args.headless))
+    actions = ActionChain(driver, model=args.model, model_provider=args.provider)
+    print(f"💻 Using model: {args.model} (provider: {args.provider})")
+    ba = inference(
+        args.model, model_provider=args.provider, instruction=args.instruction
+    )
     steps = ba.steps
 
     run_steps(

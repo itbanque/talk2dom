@@ -20,6 +20,10 @@ class ActionChain:
             self.driver.maximize_window()
         return self
 
+    def get(self, by, value):
+        self._current_element = self.driver.find_element(by, value)
+        return self
+
     def find(
         self,
         description: str,
@@ -96,6 +100,12 @@ class ActionChain:
         assert (
             text not in self.driver.page_source
         ), f"Unexpected text found in page: '{text}'"
+        return self
+
+    def assert_text(self, text):
+        assert self._current_element, "No element found for assertion"
+        actual = self._current_element.text.strip()
+        assert actual == text, f"Expected text: '{text}', but got: '{actual}'"
         return self
 
     def extract_text(self):
