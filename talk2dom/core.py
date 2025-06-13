@@ -2,6 +2,8 @@ import logging
 import time
 from pydantic import BaseModel, Field
 
+from bs4 import BeautifulSoup
+
 from langchain.chat_models import init_chat_model
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
 
@@ -47,6 +49,7 @@ def call_llm(
         for user_message, assistant_message in conversation_history:
             query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
     query += f"\n\n## HTML: \n{html}\n\nUser: {user_instruction}\n\nAssistant:"
+    print(query)
     response = chain.invoke(query)[0]
     return response
 
@@ -83,6 +86,7 @@ def get_locator(
     :param description: The description of the element.
     :param model: The model to use for the LLM.
     :param model_provider: The model provider to use for the LLM.
+    :param conversation_history: The conversation history to use for the LLM.
     :return: The locator type and value.
     """
     html = (
@@ -90,7 +94,15 @@ def get_locator(
         if isinstance(element, WebDriver)
         else element.get_attribute("outerHTML")
     )
-    selector = call_llm(description, html, model, model_provider)
+    soup = BeautifulSoup(html, "lxml")
+
+    # remove unnecessary tags
+    for tag in soup(["script", "style", "meta", "link"]):
+        tag.decompose()
+
+    html = soup.prettify()
+
+    selector = call_llm(description, html, model, model_provider, conversation_history)
 
     if selector.selector_type not in [
         "id",
@@ -115,7 +127,7 @@ def get_element(
     model="gpt-4o-mini",
     model_provider="openai",
     duration=None,
-    conversion_history=None,
+    conversation_history=None,
 ):
     """
     Get the element using LLM.
@@ -125,36 +137,19 @@ def get_element(
     :param model: The model to use for the LLM.
     :param model_provider: The model provider to use for the LLM.
     :param duration: The duration to highlight the element.
+    :param conversation_history: The conversation history to use for the LLM.
     :return: The located element.
     """
     if element is None:
         selector_type, selector_value = get_locator(
-            driver, description, model, model_provider
+            driver, description, model, model_provider, conversation_history
         )
     else:
         selector_type, selector_value = get_locator(
-            element, description, model, model_provider
+            element, description, model, model_provider, conversation_history
         )
     elem = driver.find_element(
         selector_type, selector_value
     )  # Ensure the page is loaded
     highlight_element(driver, elem, duration=duration)
     return elem
-
-
-call_llm(
-    user_instruction="Find the search bar on the page",
-    html="<html><body>...</body></html>",  # Replace with actual HTML content
-    model="gpt-4o-mini",
-    model_provider="openai",
-    conversation_history=[
-        [
-            "User: Find the search bar on the page",
-            "Assistant: The search bar is located by id 'search-bar'",
-        ],
-        [
-            "User: What is the search bar's placeholder text?",
-            "Assistant: The placeholder text is 'Search...'",
-        ],
-    ],
-)
