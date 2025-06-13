@@ -35,13 +35,18 @@ tools = [Selector]
 # ------------------ LLM Function Call ------------------
 
 
-def call_llm(user_instruction, html, model, model_provider) -> Selector:
+def call_llm(
+    user_instruction, html, model, model_provider, conversation_history=None
+) -> Selector:
     llm = init_chat_model(model, model_provider=model_provider)
     chain = llm.bind_tools(tools) | PydanticToolsParser(tools=tools)
 
-    query = (
-        load_prompt("locator_prompt.txt") + "\n\n" + user_instruction + "\n\n" + html
-    )
+    query = load_prompt("locator_prompt.txt")
+    if conversation_history:
+        query += "\n\n## Conversation History:"
+        for user_message, assistant_message in conversation_history:
+            query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
+    query += f"\n\n## HTML: \n{html}\n\nUser: {user_instruction}\n\nAssistant:"
     response = chain.invoke(query)[0]
     return response
 
@@ -65,7 +70,13 @@ def highlight_element(driver, element, duration=2):
 # ------------------ Public API ------------------
 
 
-def get_locator(element, description, model="gpt-4o-mini", model_provider="openai"):
+def get_locator(
+    element,
+    description,
+    model="gpt-4o-mini",
+    model_provider="openai",
+    conversation_history=None,
+):
     """
     Get the locator for the element using LLM.
     :param element: The element to locate.
@@ -104,6 +115,7 @@ def get_element(
     model="gpt-4o-mini",
     model_provider="openai",
     duration=None,
+    conversion_history=None,
 ):
     """
     Get the element using LLM.
@@ -128,3 +140,21 @@ def get_element(
     )  # Ensure the page is loaded
     highlight_element(driver, elem, duration=duration)
     return elem
+
+
+call_llm(
+    user_instruction="Find the search bar on the page",
+    html="<html><body>...</body></html>",  # Replace with actual HTML content
+    model="gpt-4o-mini",
+    model_provider="openai",
+    conversation_history=[
+        [
+            "User: Find the search bar on the page",
+            "Assistant: The search bar is located by id 'search-bar'",
+        ],
+        [
+            "User: What is the search bar's placeholder text?",
+            "Assistant: The placeholder text is 'Search...'",
+        ],
+    ],
+)
