@@ -1,7 +1,7 @@
 import time
 from typing import Literal
 
-from talk2dom import get_element
+from talk2dom import get_element, highlight_element
 
 
 class ActionChain:
@@ -13,6 +13,7 @@ class ActionChain:
         self.model_provider = model_provider
         self.timeout = timeout
         self._current_element = None
+        self._conversation_history = []
 
     def open(self, url, maximize=True):
         self.driver.get(url)
@@ -36,7 +37,21 @@ class ActionChain:
             model=self.model,
             model_provider=self.model_provider,
             duration=duration,
+            conversation_history=self._conversation_history,
         )
+        self._conversation_history.append([description, self._current_element])
+        return self
+
+    def find_element(self, by, value: str, duration=2):
+        """
+        Find an element by a specific locator strategy.
+        :param by: The locator strategy (e.g., By.ID, By.XPATH).
+        :param value: The value of the locator.
+        :param duration: Optional duration to highlight the element.
+        """
+        self._current_element = self.driver.find_element(by, value)
+        highlight_element(self.driver, self._current_element, duration=duration)
+        self._conversation_history.append(["", self._current_element])
         return self
 
     def click(self):
