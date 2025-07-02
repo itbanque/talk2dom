@@ -37,6 +37,7 @@ class ActionChain:
             model=self.model,
             model_provider=self.model_provider,
             duration=duration,
+            conversation_history=self._conversation_history,
         )
         self._conversation_history.append([description, self._current_element])
         return self

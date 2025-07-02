@@ -1,6 +1,6 @@
 [project]
 name = "talk2dom"
-version = "0.1.9"
+version = "0.2.0"
 description = "A utility to help you locate UI elements using HTML and natural language."
 authors = [{ name = "Jian", email = "fengjian1114@gmail.com" }]
 license = "Apache-2.0"
@@ -14,7 +14,9 @@ dependencies = [
     "langchain-openai>=0.3.12,<1.0.0",
     "openai>=1.72.0,<2.0.0",
     "pydantic>=2.11.3,<3.0.0",
-    "selenium>=4.31.0,<5.0.0"
+    "selenium>=4.31.0,<5.0.0",
+    "beautifulsoup4>=4.13,<5.0",
+    "lxml>=5.4,<6.0",
 ]
 
 [project.urls]
@@ -29,6 +31,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
+packages = ["talk2dom"]
 
 [tool.setuptools.package-data]
 "talk2dom" = ["prompts/*.txt"]
