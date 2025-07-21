@@ -14,7 +14,7 @@ def test_call_llm_with_fake_html(monkeypatch):
     from talk2dom import core
 
     monkeypatch.setattr(core, "call_llm", fake_llm)
-    result = core.call_llm(
+    result = core.call_selector_llm(
         "Click the button",
         "<html><body><button>Click me</button></body></html>",
         "gpt-4o",

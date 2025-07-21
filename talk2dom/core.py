@@ -31,17 +31,19 @@ class Selector(BaseModel):
     selector_value: str = Field(description="The selector string")
 
 
-tools = [Selector]
+class Validator(BaseModel):
+    result: bool = Field(description="Whether the user description is true/false")
+    reason: str = Field(description="The reason why the user description is true/false")
 
 
 # ------------------ LLM Function Call ------------------
 
 
-def call_llm(
+def call_selector_llm(
     user_instruction, html, model, model_provider, conversation_history=None
 ) -> Selector:
     llm = init_chat_model(model, model_provider=model_provider)
-    chain = llm.bind_tools(tools) | PydanticToolsParser(tools=tools)
+    chain = llm.bind_tools([Selector]) | PydanticToolsParser(tools=[Selector])
 
     query = load_prompt("locator_prompt.txt")
     if conversation_history:
@@ -49,7 +51,22 @@ def call_llm(
         for user_message, assistant_message in conversation_history:
             query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
     query += f"\n\n## HTML: \n{html}\n\nUser: {user_instruction}\n\nAssistant:"
-    print(query)
+    response = chain.invoke(query)[0]
+    return response
+
+
+def call_validator_llm(
+    user_instruction, html, model, model_provider, conversation_history=None
+) -> Validator:
+    llm = init_chat_model(model, model_provider=model_provider)
+    chain = llm.bind_tools([Validator]) | PydanticToolsParser(tools=[Validator])
+
+    query = load_prompt("validator_prompt.txt")
+    if conversation_history:
+        query += "\n\n## Conversation History:"
+        for user_message, assistant_message in conversation_history:
+            query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
+    query += f"\n\n## HTML: \n{html}\n\nUser: {user_instruction}\n\nAssistant:"
     response = chain.invoke(query)[0]
     return response
 
@@ -102,7 +119,9 @@ def get_locator(
 
     html = soup.prettify()
 
-    selector = call_llm(description, html, model, model_provider, conversation_history)
+    selector = call_selector_llm(
+        description, html, model, model_provider, conversation_history
+    )
 
     if selector.selector_type not in [
         "id",
@@ -153,3 +172,30 @@ def get_element(
     )  # Ensure the page is loaded
     highlight_element(driver, elem, duration=duration)
     return elem
+
+
+def validate_element(
+    element,
+    description,
+    model="gpt-4o-mini",
+    model_provider="openai",
+    conversation_history=None,
+):
+    html = (
+        element.find_element(By.TAG_NAME, "body").get_attribute("outerHTML")
+        if isinstance(element, WebDriver)
+        else element.get_attribute("outerHTML")
+    )
+    soup = BeautifulSoup(html, "lxml")
+
+    # remove unnecessary tags
+    for tag in soup(["script", "style", "meta", "link"]):
+        tag.decompose()
+
+    html = soup.prettify()
+
+    validator = call_validator_llm(
+        description, html, model, model_provider, conversation_history
+    )
+
+    return validator

@@ -1,7 +1,7 @@
 import time
 from typing import Literal
 
-from talk2dom import get_element, highlight_element
+from talk2dom import get_element, highlight_element, validate_element
 
 
 class ActionChain:
@@ -41,6 +41,15 @@ class ActionChain:
         )
         self._conversation_history.append([description, self._current_element])
         return self
+
+    def valid(self, description):
+        validator = validate_element(
+            element=self._current_element,
+            description=description,
+            model=self.model,
+            model_provider=self.model_provider,
+        )
+        assert validator.result is True, validator.result
 
     def find_element(self, by, value: str, duration=2):
         """
