@@ -4,6 +4,7 @@ langchain-community==0.3.21
 langchain-core==0.3.51
 langchain-groq==0.3.2
 langchain-openai==0.3.12
+loguru==0.7.3
 lxml==5.4.0
 openai==1.72.0
 pydantic==2.11.3

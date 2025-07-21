@@ -1,7 +1,8 @@
 import time
+from loguru import logger
 from typing import Literal
 
-from talk2dom import get_element, highlight_element
+from talk2dom import get_element, highlight_element, validate_element
 
 
 class ActionChain:
@@ -19,6 +20,7 @@ class ActionChain:
         self.driver.get(url)
         if maximize:
             self.driver.maximize_window()
+        logger.info(f"Opened URL: {url}")
         return self
 
     def find(
@@ -39,7 +41,21 @@ class ActionChain:
             duration=duration,
             conversation_history=self._conversation_history,
         )
+        logger.info(f"Find element: {self._current_element}")
         self._conversation_history.append([description, self._current_element])
+        return self
+
+    def valid(self, description):
+        validator = validate_element(
+            element=self.driver,
+            description=description,
+            model=self.model,
+            model_provider=self.model_provider,
+        )
+        logger.info(
+            f"Validated, result: {validator.result}, reason: {validator.reason}"
+        )
+        assert validator.result is True, validator.reason
         return self
 
     def find_element(self, by, value: str, duration=2):
@@ -57,9 +73,10 @@ class ActionChain:
     def click(self):
         if self._current_element:
             self._current_element.click()
+        logger.info(f"Clicked on element: {self._current_element}")
         return self
 
-    def type(self, text: str, mode="replace"):
+    def type(self, text: str, mode="append"):
         if self._current_element:
             if mode == "replace":
                 self._current_element.clear()
@@ -68,14 +85,17 @@ class ActionChain:
                 self._current_element.send_keys(text)
             else:
                 raise ValueError(f"Unsupported mode: {mode}")
+        logger.info(f"Typed text: {text}, mode: {mode}")
         return self
 
     def wait(self, seconds: float):
         time.sleep(seconds)
+        logger.info(f"Waited for {seconds} seconds")
         return self
 
     def screenshot(self, path="screenshot.png"):
         self.driver.save_screenshot(path)
+        logger.info(f"Screenshot saved to: {path}")
         return self
 
     def get_element(self):
@@ -125,4 +145,5 @@ class ActionChain:
 
     def close(self):
         self.driver.quit()
+        logger.info("Closed the browser")
         return self

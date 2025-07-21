@@ -97,8 +97,10 @@ ActionChain(driver) \
     .open("http://www.python.org") \
     .find("Find the Search box") \
     .type("pycon") \
+    .wait(2) \
     .type(Keys.RETURN) \
     .assert_page_not_contains("No results found.") \
+    .valid("the 'PSF PyCon Trademark Usage Policy' is displayed") \ 
     .close()
 ```
 
