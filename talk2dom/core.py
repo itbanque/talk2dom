@@ -1,4 +1,3 @@
-import logging
 import time
 from pydantic import BaseModel, Field
 
@@ -12,8 +11,7 @@ from selenium.webdriver.common.by import By
 
 from pathlib import Path
 
-
-LOGGER = logging.getLogger(__name__)
+from loguru import logger
 
 
 def load_prompt(file_path: str) -> str:
@@ -51,6 +49,7 @@ def call_selector_llm(
         for user_message, assistant_message in conversation_history:
             query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
     query += f"\n\n## HTML: \n{html}\n\nUser: {user_instruction}\n\nAssistant:"
+    logger.debug(f"Query for LLM: {query}")
     response = chain.invoke(query)[0]
     return response
 
@@ -67,6 +66,7 @@ def call_validator_llm(
         for user_message, assistant_message in conversation_history:
             query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
     query += f"\n\n## HTML: \n{html}\n\nUser: {user_instruction}\n\nAssistant:"
+    logger.debug(f"Query for LLM: {query}")
     response = chain.invoke(query)[0]
     return response
 
@@ -85,6 +85,7 @@ def highlight_element(driver, element, duration=2):
         driver.execute_script(
             f"arguments[0].setAttribute('style', `{original_style}`)", element
         )
+    logger.debug(f"Highlighted element: {element}")
 
 
 # ------------------ Public API ------------------
@@ -133,8 +134,8 @@ def get_locator(
     ]:
         raise ValueError(f"Unsupported selector type: {selector.selector_type}")
 
-    LOGGER.info(
-        "Located by: %s, selector: %s", selector.selector_type, selector.selector_value
+    logger.info(
+        f"Located by: {selector.selector_type}, selector: {selector.selector_value}"
     )
     return selector.selector_type, selector.selector_value.strip()
 
