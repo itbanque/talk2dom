@@ -47,7 +47,8 @@ class ActionChain:
 
     def valid(self, description):
         validator = validate_element(
-            element=self.driver,
+            driver=self.driver,
+            element=None,
             description=description,
             model=self.model,
             model_provider=self.model_provider,

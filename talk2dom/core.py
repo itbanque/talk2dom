@@ -1,4 +1,6 @@
 import time
+from enum import Enum
+
 from pydantic import BaseModel, Field
 
 from bs4 import BeautifulSoup
@@ -22,10 +24,17 @@ def load_prompt(file_path: str) -> str:
 # ------------------ Pydantic Schema ------------------
 
 
+class SelectorType(str, Enum):
+    ID = "id"
+    TAG_NAME = "tag name"
+    NAME = "name"
+    CLASS_NAME = "class name"
+    XPATH = "xpath"
+    CSS_SELECTOR = "css selector"
+
+
 class Selector(BaseModel):
-    selector_type: str = Field(
-        description="Either 'id', 'tag name', 'name', 'class name', 'xpath' or 'css selector'"
-    )
+    selector_type: SelectorType
     selector_value: str = Field(description="The selector string")
 
 
@@ -55,7 +64,7 @@ def call_selector_llm(
 
 
 def call_validator_llm(
-    user_instruction, html, model, model_provider, conversation_history=None
+    user_instruction, html, css_style, model, model_provider, conversation_history=None
 ) -> Validator:
     llm = init_chat_model(model, model_provider=model_provider)
     chain = llm.bind_tools([Validator]) | PydanticToolsParser(tools=[Validator])
@@ -65,7 +74,7 @@ def call_validator_llm(
         query += "\n\n## Conversation History:"
         for user_message, assistant_message in conversation_history:
             query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
-    query += f"\n\n## HTML: \n{html}\n\nUser: {user_instruction}\n\nAssistant:"
+    query += f"\n\n## HTML: \n{html}\n\n## STYLES: \n{css_style}\n\nUser: {user_instruction}\n\nAssistant:"
     logger.debug(f"Query for LLM: {query}")
     response = chain.invoke(query)[0]
     return response
@@ -86,6 +95,56 @@ def highlight_element(driver, element, duration=2):
             f"arguments[0].setAttribute('style', `{original_style}`)", element
         )
     logger.debug(f"Highlighted element: {element}")
+
+
+def get_computed_styles(driver, element, properties=None):
+    """
+    Get the computed styles of a WebElement using JavaScript.
+    :param driver: Selenium WebDriver
+    :param element: WebElement
+    :param properties: List of CSS properties to retrieve. If None, retrieves all properties.
+    :return: dict of {property: value}
+    """
+    if properties:
+        script = """
+        const element = arguments[0];
+        const properties = arguments[1];
+        const styles = window.getComputedStyle(element);
+        const result = {};
+        for (let prop of properties) {
+            result[prop] = styles.getPropertyValue(prop);
+        }
+        return result;
+        """
+        return driver.execute_script(script, element, properties)
+    else:
+        script = """
+        const element = arguments[0];
+        const styles = window.getComputedStyle(element);
+        const result = {};
+        for (let i = 0; i < styles.length; i++) {
+            const name = styles[i];
+            result[name] = styles.getPropertyValue(name);
+        }
+        return result;
+        """
+        return driver.execute_script(script, element)
+
+
+def get_html(element):
+    html = (
+        element.find_element(By.TAG_NAME, "body").get_attribute("outerHTML")
+        if isinstance(element, WebDriver)
+        else element.get_attribute("outerHTML")
+    )
+    soup = BeautifulSoup(html, "lxml")
+
+    # remove unnecessary tags
+    for tag in soup(["script", "style", "meta", "link"]):
+        tag.decompose()
+
+    html = soup.prettify()
+    return html
 
 
 # ------------------ Public API ------------------
@@ -176,27 +235,36 @@ def get_element(
 
 
 def validate_element(
-    element,
+    driver,
     description,
+    element=None,
     model="gpt-4o-mini",
     model_provider="openai",
+    duration=None,
     conversation_history=None,
 ):
-    html = (
-        element.find_element(By.TAG_NAME, "body").get_attribute("outerHTML")
-        if isinstance(element, WebDriver)
-        else element.get_attribute("outerHTML")
-    )
-    soup = BeautifulSoup(html, "lxml")
+    try:
+        ele = get_element(
+            driver,
+            description,
+            element=element,
+            model=model,
+            model_provider=model_provider,
+            duration=duration,
+            conversation_history=conversation_history,
+        )
+        css_style = get_computed_styles(driver, ele)
+    except Exception:
+        logger.error(f"Failed to get element: {description}")
+        css_style = {}
 
-    # remove unnecessary tags
-    for tag in soup(["script", "style", "meta", "link"]):
-        tag.decompose()
-
-    html = soup.prettify()
-
+    html = get_html(driver)
     validator = call_validator_llm(
-        description, html, model, model_provider, conversation_history
+        description,
+        html,
+        css_style,
+        model,
+        model_provider,
+        conversation_history,
     )
-
     return validator
