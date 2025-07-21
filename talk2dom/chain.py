@@ -85,7 +85,7 @@ class ActionChain:
                 self._current_element.send_keys(text)
             else:
                 raise ValueError(f"Unsupported mode: {mode}")
-        logger.info(f"Typed text: {text}")
+        logger.info(f"Typed text: {text}, mode: {mode}")
         return self
 
     def wait(self, seconds: float):
