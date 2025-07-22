@@ -15,6 +15,12 @@ from pathlib import Path
 
 from loguru import logger
 
+from talk2dom.db.cache import get_cached_locator, save_locator
+from talk2dom.db.init import init_db
+
+
+init_db()
+
 
 def load_prompt(file_path: str) -> str:
     prompt_path = Path(__file__).parent / "prompts" / file_path
@@ -178,6 +184,14 @@ def get_locator(
         tag.decompose()
 
     html = soup.prettify()
+    logger.debug(
+        f"Generating locator, instruction: {description}, HTML: {html[500:]}..."
+    )  # Log first 500 chars
+
+    selector_type, selector_value = get_cached_locator(description, html)
+    if selector_type and selector_value:
+        logger.info(f"Using cached locator: {selector_type}, value: {selector_value}")
+        return selector_type, selector_value
 
     selector = call_selector_llm(
         description, html, model, model_provider, conversation_history
@@ -194,7 +208,10 @@ def get_locator(
         raise ValueError(f"Unsupported selector type: {selector.selector_type}")
 
     logger.info(
-        f"Located by: {selector.selector_type}, selector: {selector.selector_value}"
+        f"Located by: {selector.selector_type}, selector: {selector.selector_value.strip()}"
+    )
+    save_locator(
+        description, html, selector.selector_type, selector.selector_value.strip()
     )
     return selector.selector_type, selector.selector_value.strip()
 
@@ -254,8 +271,8 @@ def validate_element(
             conversation_history=conversation_history,
         )
         css_style = get_computed_styles(driver, ele)
-    except Exception:
-        logger.error(f"Failed to get element: {description}")
+    except Exception as e:
+        logger.error(f"Failed to get element: {description}, error: {e}")
         css_style = {}
 
     html = get_html(driver)

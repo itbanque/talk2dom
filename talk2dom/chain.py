@@ -41,7 +41,9 @@ class ActionChain:
             duration=duration,
             conversation_history=self._conversation_history,
         )
-        logger.info(f"Find element: {self._current_element}")
+        logger.info(
+            f"Find element, description: {description}, element: {self._current_element}"
+        )
         self._conversation_history.append([description, self._current_element])
         return self
 
@@ -54,7 +56,7 @@ class ActionChain:
             model_provider=self.model_provider,
         )
         logger.info(
-            f"Validated, result: {validator.result}, reason: {validator.reason}"
+            f"Validated, description: {description}, result: {validator.result}, reason: {validator.reason}"
         )
         assert validator.result is True, validator.reason
         return self
