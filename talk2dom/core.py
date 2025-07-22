@@ -1,4 +1,6 @@
 import time
+from enum import Enum
+
 from pydantic import BaseModel, Field
 
 from bs4 import BeautifulSoup
@@ -13,6 +15,12 @@ from pathlib import Path
 
 from loguru import logger
 
+from talk2dom.db.cache import get_cached_locator, save_locator
+from talk2dom.db.init import init_db
+
+
+init_db()
+
 
 def load_prompt(file_path: str) -> str:
     prompt_path = Path(__file__).parent / "prompts" / file_path
@@ -22,10 +30,17 @@ def load_prompt(file_path: str) -> str:
 # ------------------ Pydantic Schema ------------------
 
 
+class SelectorType(str, Enum):
+    ID = "id"
+    TAG_NAME = "tag name"
+    NAME = "name"
+    CLASS_NAME = "class name"
+    XPATH = "xpath"
+    CSS_SELECTOR = "css selector"
+
+
 class Selector(BaseModel):
-    selector_type: str = Field(
-        description="Either 'id', 'tag name', 'name', 'class name', 'xpath' or 'css selector'"
-    )
+    selector_type: SelectorType
     selector_value: str = Field(description="The selector string")
 
 
@@ -40,6 +55,7 @@ class Validator(BaseModel):
 def call_selector_llm(
     user_instruction, html, model, model_provider, conversation_history=None
 ) -> Selector:
+    logger.warning("Calling LLM for selector generation...")
     llm = init_chat_model(model, model_provider=model_provider)
     chain = llm.bind_tools([Selector]) | PydanticToolsParser(tools=[Selector])
 
@@ -55,8 +71,9 @@ def call_selector_llm(
 
 
 def call_validator_llm(
-    user_instruction, html, model, model_provider, conversation_history=None
+    user_instruction, html, css_style, model, model_provider, conversation_history=None
 ) -> Validator:
+    logger.warning("Calling validator LLM...")
     llm = init_chat_model(model, model_provider=model_provider)
     chain = llm.bind_tools([Validator]) | PydanticToolsParser(tools=[Validator])
 
@@ -65,7 +82,7 @@ def call_validator_llm(
         query += "\n\n## Conversation History:"
         for user_message, assistant_message in conversation_history:
             query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
-    query += f"\n\n## HTML: \n{html}\n\nUser: {user_instruction}\n\nAssistant:"
+    query += f"\n\n## HTML: \n{html}\n\n## STYLES: \n{css_style}\n\nUser: {user_instruction}\n\nAssistant:"
     logger.debug(f"Query for LLM: {query}")
     response = chain.invoke(query)[0]
     return response
@@ -86,6 +103,56 @@ def highlight_element(driver, element, duration=2):
             f"arguments[0].setAttribute('style', `{original_style}`)", element
         )
     logger.debug(f"Highlighted element: {element}")
+
+
+def get_computed_styles(driver, element, properties=None):
+    """
+    Get the computed styles of a WebElement using JavaScript.
+    :param driver: Selenium WebDriver
+    :param element: WebElement
+    :param properties: List of CSS properties to retrieve. If None, retrieves all properties.
+    :return: dict of {property: value}
+    """
+    if properties:
+        script = """
+        const element = arguments[0];
+        const properties = arguments[1];
+        const styles = window.getComputedStyle(element);
+        const result = {};
+        for (let prop of properties) {
+            result[prop] = styles.getPropertyValue(prop);
+        }
+        return result;
+        """
+        return driver.execute_script(script, element, properties)
+    else:
+        script = """
+        const element = arguments[0];
+        const styles = window.getComputedStyle(element);
+        const result = {};
+        for (let i = 0; i < styles.length; i++) {
+            const name = styles[i];
+            result[name] = styles.getPropertyValue(name);
+        }
+        return result;
+        """
+        return driver.execute_script(script, element)
+
+
+def get_html(element):
+    html = (
+        element.find_element(By.TAG_NAME, "body").get_attribute("outerHTML")
+        if isinstance(element, WebDriver)
+        else element.get_attribute("outerHTML")
+    )
+    soup = BeautifulSoup(html, "lxml")
+
+    # remove unnecessary tags
+    for tag in soup(["script", "style", "meta", "link"]):
+        tag.decompose()
+
+    html = soup.prettify()
+    return html
 
 
 # ------------------ Public API ------------------
@@ -119,6 +186,14 @@ def get_locator(
         tag.decompose()
 
     html = soup.prettify()
+    logger.debug(
+        f"Generating locator, instruction: {description}, HTML: {html[500:]}..."
+    )  # Log first 500 chars
+
+    selector_type, selector_value = get_cached_locator(description, html)
+    if selector_type and selector_value:
+        logger.info(f"Using cached locator: {selector_type}, value: {selector_value}")
+        return selector_type, selector_value
 
     selector = call_selector_llm(
         description, html, model, model_provider, conversation_history
@@ -135,7 +210,10 @@ def get_locator(
         raise ValueError(f"Unsupported selector type: {selector.selector_type}")
 
     logger.info(
-        f"Located by: {selector.selector_type}, selector: {selector.selector_value}"
+        f"Located by: {selector.selector_type}, selector: {selector.selector_value.strip()}"
+    )
+    save_locator(
+        description, html, selector.selector_type, selector.selector_value.strip()
     )
     return selector.selector_type, selector.selector_value.strip()
 
@@ -176,27 +254,36 @@ def get_element(
 
 
 def validate_element(
-    element,
+    driver,
     description,
+    element=None,
     model="gpt-4o-mini",
     model_provider="openai",
+    duration=None,
     conversation_history=None,
 ):
-    html = (
-        element.find_element(By.TAG_NAME, "body").get_attribute("outerHTML")
-        if isinstance(element, WebDriver)
-        else element.get_attribute("outerHTML")
-    )
-    soup = BeautifulSoup(html, "lxml")
+    try:
+        ele = get_element(
+            driver,
+            description,
+            element=element,
+            model=model,
+            model_provider=model_provider,
+            duration=duration,
+            conversation_history=conversation_history,
+        )
+        css_style = get_computed_styles(driver, ele)
+    except Exception as e:
+        logger.error(f"Failed to get element: {description}, error: {e}")
+        css_style = {}
 
-    # remove unnecessary tags
-    for tag in soup(["script", "style", "meta", "link"]):
-        tag.decompose()
-
-    html = soup.prettify()
-
+    html = get_html(driver)
     validator = call_validator_llm(
-        description, html, model, model_provider, conversation_history
+        description,
+        html,
+        css_style,
+        model,
+        model_provider,
+        conversation_history,
     )
-
     return validator
