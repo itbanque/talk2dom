@@ -55,13 +55,13 @@ To avoid recomputing selectors every time, `talk2dom` can cache results in a Pos
 
 ### Setup
 
-Set the `DB_URI` environment variable:
+Set the `TAK2DOM_DB_URI` environment variable:
 
 ```bash
-export DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
+export TAK2DOM_DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
 ```
 
-If `DB_URI` is not set, caching is automatically disabled, and all requests will use LLM inference in real-time.
+If `TAK2DOM_DB_URI` is not set, caching is automatically disabled, and all requests will use LLM inference in real-time.
 
 ---
 

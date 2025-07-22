@@ -58,10 +58,10 @@
 通过环境变量启用数据库缓存：
 
 ```bash
-export DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
+export TAK2DOM_DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
 ```
 
-如果未设置 `DB_URI`，缓存功能将自动禁用，所有请求默认使用 LLM 实时推理。
+如果未设置 `TAK2DOM_DB_URI`，缓存功能将自动禁用，所有请求默认使用 LLM 实时推理。
 
 ---
 
