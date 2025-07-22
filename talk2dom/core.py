@@ -55,6 +55,7 @@ class Validator(BaseModel):
 def call_selector_llm(
     user_instruction, html, model, model_provider, conversation_history=None
 ) -> Selector:
+    logger.warning("Calling LLM for selector generation...")
     llm = init_chat_model(model, model_provider=model_provider)
     chain = llm.bind_tools([Selector]) | PydanticToolsParser(tools=[Selector])
 
@@ -72,6 +73,7 @@ def call_selector_llm(
 def call_validator_llm(
     user_instruction, html, css_style, model, model_provider, conversation_history=None
 ) -> Validator:
+    logger.warning("Calling validator LLM...")
     llm = init_chat_model(model, model_provider=model_provider)
     chain = llm.bind_tools([Validator]) | PydanticToolsParser(tools=[Validator])
 
