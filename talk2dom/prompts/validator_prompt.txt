@@ -83,7 +83,3 @@ Always return a JSON object with this structure:
   "reason": "The link is present and has the expected text 'Learn More', but the color was requested and CSS styles were not provided."
 }
 ```
-
----
-
-Let me know if you need a version customized for your project, team, or workflow!
