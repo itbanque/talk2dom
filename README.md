@@ -43,6 +43,28 @@ Think about it:
 
 ---
 
+## 🗃️ Optional: Enable Locator Caching (PostgreSQL)
+
+To avoid recomputing selectors every time, `talk2dom` can cache results in a PostgreSQL database.
+
+### How it works
+
+* For each `instruction + html` pair, a unique SHA256 hash is generated.
+* If a previous result exists, `talk2dom` reuses it and skips the LLM call.
+* Greatly improves performance and reduces token usage.
+
+### Setup
+
+Set the `DB_URI` environment variable:
+
+```bash
+export DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
+```
+
+If `DB_URI` is not set, caching is automatically disabled, and all requests will use LLM inference in real-time.
+
+---
+
 ## 🤔 Why Selenium?
 
 While there are many modern tools for controlling browsers (like Playwright or Puppeteer), **Selenium remains the most robust and cross-platform solution**, especially when dealing with:

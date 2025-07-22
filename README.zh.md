@@ -43,6 +43,28 @@
 
 ---
 
+## 🗃️ 可选功能：启用 PostgreSQL 缓存定位器结果
+
+为了避免每次都重新调用 LLM 推理选择器，`talk2dom` 支持通过 PostgreSQL 数据库缓存结果。
+
+### 工作原理
+
+* 对于每一对 `instruction + HTML` 输入，系统会生成一个唯一的 SHA256 哈希 ID。
+* 如果数据库中已有对应缓存，将直接返回缓存结果，跳过 LLM 调用。
+* 该机制可显著提升性能，降低延迟和 token 成本。
+
+### 配置方式
+
+通过环境变量启用数据库缓存：
+
+```bash
+export DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
+```
+
+如果未设置 `DB_URI`，缓存功能将自动禁用，所有请求默认使用 LLM 实时推理。
+
+---
+
 ## 🤔 为什么选择 Selenium？
 
 虽然 Playwright、Puppeteer 等现代浏览器控制工具层出不穷，**但 Selenium 依然是最健壮、最具跨平台支持的解决方案**，尤其在以下环境中：
