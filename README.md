@@ -122,7 +122,7 @@ ActionChain(driver) \
     .wait(2) \
     .type(Keys.RETURN) \
     .assert_page_not_contains("No results found.") \
-    .valid("the 'PSF PyCon Trademark Usage Policy' is displayed") \ 
+    .valid("the 'PSF PyCon Trademark Usage Policy' is exist") \ 
     .close()
 ```
 
