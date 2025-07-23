@@ -8,6 +8,7 @@ class UILocatorCache(Base):
     __tablename__ = "ui_locator_cache"
 
     id = Column(String, primary_key=True)
+    url = Column(String, nullable=False)
     user_instruction = Column(Text, nullable=False)
     html = Column(Text, nullable=False)
     selector_type = Column(String, nullable=False)

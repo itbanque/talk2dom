@@ -15,11 +15,59 @@ from pathlib import Path
 
 from loguru import logger
 
-from talk2dom.db.cache import get_cached_locator, save_locator
+from talk2dom.db.cache import get_cached_locator, save_locator, delete_locator
 from talk2dom.db.init import init_db
-
+import time
+import functools
 
 init_db()
+
+
+def retry(
+    exceptions: tuple = (Exception,),
+    max_attempts: int = 3,
+    delay: float = 1.0,
+    backoff: float = 2.0,
+    logger_enabled: bool = True,
+):
+    """
+    Retry decorator with exponential backoff.
+
+    Args:
+        exceptions: Tuple of exception classes to catch.
+        max_attempts: Maximum number of retry attempts.
+        delay: Initial delay between retries (in seconds).
+        backoff: Multiplier applied to delay after each failure.
+        logger_enabled: Whether to log retry attempts.
+
+    Usage:
+        @retry(max_attempts=5, delay=2)
+        def unstable_operation():
+            ...
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            attempt = 1
+            current_delay = delay
+            while attempt <= max_attempts:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    if attempt == max_attempts:
+                        raise
+                    if logger_enabled:
+                        logger.warning(
+                            f"[Retry] Attempt {attempt} failed: {e}. Retrying in {current_delay:.1f}s..."
+                        )
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+                    attempt += 1
+
+        return wrapper
+
+    return decorator
 
 
 def load_prompt(file_path: str) -> str:
@@ -65,7 +113,7 @@ def call_selector_llm(
         for user_message, assistant_message in conversation_history:
             query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
     query += f"\n\n## HTML: \n{html}\n\nUser: {user_instruction}\n\nAssistant:"
-    logger.debug(f"Query for LLM: {query}")
+    logger.debug(f"Query for LLM: {query[0:100]}")
     try:
         response = chain.invoke(query)[0]
         return response
@@ -86,7 +134,7 @@ def call_validator_llm(
         for user_message, assistant_message in conversation_history:
             query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
     query += f"\n\n## HTML: \n{html}\n\n## STYLES: \n{css_style}\n\nUser: {user_instruction}\n\nAssistant:"
-    logger.debug(f"Query for LLM: {query}")
+    logger.debug(f"Query for LLM: {query[500:]}")
     try:
         response = chain.invoke(query)[0]
         return response
@@ -170,6 +218,7 @@ def get_locator(
     model="gpt-4o-mini",
     model_provider="openai",
     conversation_history=None,
+    url=None,
 ):
     """
     Get the locator for the element using LLM.
@@ -193,10 +242,10 @@ def get_locator(
 
     html = soup.prettify()
     logger.debug(
-        f"Generating locator, instruction: {description}, HTML: {html[500:]}..."
-    )  # Log first 500 chars
+        f"Generating locator, instruction: {description}, HTML: {html[0:100]}..."
+    )  # Log first 100 chars
 
-    selector_type, selector_value = get_cached_locator(description, html)
+    selector_type, selector_value = get_cached_locator(description, html, url=url)
     if selector_type and selector_value:
         logger.info(f"Using cached locator: {selector_type}, value: {selector_value}")
         return selector_type, selector_value
@@ -220,12 +269,10 @@ def get_locator(
     logger.info(
         f"Located by: {selector.selector_type}, selector: {selector.selector_value.strip()}"
     )
-    save_locator(
-        description, html, selector.selector_type, selector.selector_value.strip()
-    )
     return selector.selector_type, selector.selector_value.strip()
 
 
+@retry()
 def get_element(
     driver,
     description,
@@ -248,16 +295,40 @@ def get_element(
     """
     if element is None:
         selector_type, selector_value = get_locator(
-            driver, description, model, model_provider, conversation_history
+            driver,
+            description,
+            model,
+            model_provider,
+            conversation_history,
+            url=driver.current_url,
         )
     else:
         selector_type, selector_value = get_locator(
-            element, description, model, model_provider, conversation_history
+            element,
+            description,
+            model,
+            model_provider,
+            conversation_history,
+            url=driver.current_url,
         )
-    elem = driver.find_element(
-        selector_type, selector_value
-    )  # Ensure the page is loaded
+    try:
+        elem = driver.find_element(
+            selector_type, selector_value
+        )  # Ensure the page is loaded
+        save_locator(
+            description,
+            "",
+            selector_type,
+            selector_value.strip(),
+            url=driver.current_url,
+        )
+    except Exception as e:
+        # remove
+        delete_locator(description, "", driver.current_url)
+        raise e
+
     highlight_element(driver, elem, duration=duration)
+
     return elem
 
 
