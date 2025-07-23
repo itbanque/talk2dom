@@ -114,15 +114,15 @@ class ActionChain:
     def assert_text_contains(self, substring: str):
         assert self._current_element, "No element found for assertion"
         actual = self._current_element.text.strip()
-        assert (
-            substring in actual
-        ), f"Expected to contain: '{substring}', but got: '{actual}'"
+        assert substring in actual, (
+            f"Expected to contain: '{substring}', but got: '{actual}'"
+        )
         return self
 
     def assert_exists(self):
-        assert (
-            self._current_element is not None
-        ), "Expected element to exist but found none"
+        assert self._current_element is not None, (
+            "Expected element to exist but found none"
+        )
         return self
 
     def assert_visible(self):
@@ -131,9 +131,9 @@ class ActionChain:
         return self
 
     def assert_page_not_contains(self, text: str):
-        assert (
-            text not in self.driver.page_source
-        ), f"Unexpected text found in page: '{text}'"
+        assert text not in self.driver.page_source, (
+            f"Unexpected text found in page: '{text}'"
+        )
         return self
 
     def extract_text(self):

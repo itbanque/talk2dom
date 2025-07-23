@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, TIMESTAMP, UniqueConstraint, func
+from sqlalchemy import Column, String, Text, TIMESTAMP, func
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()

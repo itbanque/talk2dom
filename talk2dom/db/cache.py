@@ -14,7 +14,6 @@ def compute_locator_id(instruction: str, html: str) -> str:
 
 
 def get_cached_locator(instruction: str, html: str):
-
     if SessionLocal is None:
         return None, None
 

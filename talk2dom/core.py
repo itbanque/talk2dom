@@ -66,8 +66,11 @@ def call_selector_llm(
             query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
     query += f"\n\n## HTML: \n{html}\n\nUser: {user_instruction}\n\nAssistant:"
     logger.debug(f"Query for LLM: {query}")
-    response = chain.invoke(query)[0]
-    return response
+    try:
+        response = chain.invoke(query)[0]
+        return response
+    except Exception as e:
+        logger.error(f"Query failed: {e}")
 
 
 def call_validator_llm(
@@ -84,8 +87,11 @@ def call_validator_llm(
             query += f"\n\nUser: {user_message}\n\nAssistant: {assistant_message}"
     query += f"\n\n## HTML: \n{html}\n\n## STYLES: \n{css_style}\n\nUser: {user_instruction}\n\nAssistant:"
     logger.debug(f"Query for LLM: {query}")
-    response = chain.invoke(query)[0]
-    return response
+    try:
+        response = chain.invoke(query)[0]
+        return response
+    except Exception as e:
+        logger.error(f"Query failed: {e}")
 
 
 def highlight_element(driver, element, duration=2):
@@ -198,6 +204,8 @@ def get_locator(
     selector = call_selector_llm(
         description, html, model, model_provider, conversation_history
     )
+    if selector is None:
+        raise Exception(f"Could not find locator: {description}")
 
     if selector.selector_type not in [
         "id",
@@ -286,4 +294,6 @@ def validate_element(
         model_provider,
         conversation_history,
     )
+    if validator is None:
+        raise Exception(f"Could not find validator: {description}")
     return validator
