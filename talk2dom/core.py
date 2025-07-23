@@ -17,7 +17,6 @@ from loguru import logger
 
 from talk2dom.db.cache import get_cached_locator, save_locator, delete_locator
 from talk2dom.db.init import init_db
-import time
 import functools
 
 init_db()

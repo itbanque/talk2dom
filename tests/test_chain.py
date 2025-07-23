@@ -5,7 +5,6 @@ from talk2dom.chain import ActionChain
 
 
 class TestActionChain(unittest.TestCase):
-
     def setUp(self):
         self.driver = MagicMock()
         self.chain = ActionChain(driver=self.driver)
