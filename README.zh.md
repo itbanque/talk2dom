@@ -49,7 +49,7 @@
 
 ### 工作原理
 
-* 对于每一对 `instruction + HTML` 输入，系统会生成一个唯一的 SHA256 哈希 ID。
+* 对于每一对 `instruction + url` 输入，系统会生成一个唯一的 SHA256 哈希 ID。
 * 如果数据库中已有对应缓存，将直接返回缓存结果，跳过 LLM 调用。
 * 该机制可显著提升性能，降低延迟和 token 成本。
 
@@ -58,10 +58,10 @@
 通过环境变量启用数据库缓存：
 
 ```bash
-export TAK2DOM_DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
+export TALK2DOM_DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
 ```
 
-如果未设置 `TAK2DOM_DB_URI`，缓存功能将自动禁用，所有请求默认使用 LLM 实时推理。
+如果未设置 `TALK2DOM_DB_URI`，缓存功能将自动禁用，所有请求默认使用 LLM 实时推理。
 
 ---
 

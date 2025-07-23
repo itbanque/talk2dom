@@ -49,19 +49,19 @@ To avoid recomputing selectors every time, `talk2dom` can cache results in a Pos
 
 ### How it works
 
-* For each `instruction + html` pair, a unique SHA256 hash is generated.
+* For each `instruction + url` pair, a unique SHA256 hash is generated.
 * If a previous result exists, `talk2dom` reuses it and skips the LLM call.
 * Greatly improves performance and reduces token usage.
 
 ### Setup
 
-Set the `TAK2DOM_DB_URI` environment variable:
+Set the `TALK2DOM_DB_URI` environment variable:
 
 ```bash
-export TAK2DOM_DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
+export TALK2DOM_DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
 ```
 
-If `TAK2DOM_DB_URI` is not set, caching is automatically disabled, and all requests will use LLM inference in real-time.
+If `TALK2DOM_DB_URI` is not set, caching is automatically disabled, and all requests will use LLM inference in real-time.
 
 ---
 
