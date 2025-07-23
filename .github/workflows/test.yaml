@@ -25,10 +25,12 @@ jobs:
             cache: "pip"
         - name: Install Dependencies
           run: |
-            pip install black
+            pip install ruff
             pip install -r requirements.txt
         - name: Run Black
-          run: black --check .
+          run: |
+            ruff check .
+            ruff format --check .
         - name: Run Unittest
           run: |
             pip install pytest
