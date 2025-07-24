@@ -65,7 +65,6 @@ def track_api_usage():
         @wraps(func)
         def wrapper(*args, **kwargs):
 
-            req = kwargs.get("req")
             request = kwargs.get("request")
             db: Session = kwargs.get("db")
             api_key_id = kwargs.get("api_key_id")
@@ -87,7 +86,7 @@ def track_api_usage():
 
             usage = APIUsage(
                 api_key_id=api_key_id,
-                endpoint=str(req.url),
+                endpoint=str(request.url.path),
                 request_time=start,
                 response_time=end,
                 duration_ms=duration_ms,

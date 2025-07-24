@@ -50,6 +50,8 @@ def locate(
             req.conversation_history,
         )
         request.state.call_llm = True
+        request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
+        request.state.output_tokens = len(selector_type) + len(selector_value)
         selector_type, selector_value = selector.selector_type, selector.selector_value
 
         if verifier.verify(selector_type, selector_value):
