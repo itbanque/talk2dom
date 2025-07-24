@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   postgres:
     image: postgres:15
@@ -11,6 +12,17 @@ services:
       POSTGRES_DB: talk2dom
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  talk2dom-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    env_file:
+      - .env
 
 volumes:
   postgres_data:

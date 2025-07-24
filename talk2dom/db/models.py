@@ -1,5 +1,21 @@
-from sqlalchemy import Column, String, Text, TIMESTAMP, func
+from sqlalchemy import (
+    Column,
+    Integer,
+    JSON,
+    ForeignKey,
+    String,
+    Text,
+    TIMESTAMP,
+    func,
+    DateTime,
+    Boolean,
+)
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.dialects.postgresql import UUID
+from datetime import datetime
+import uuid
+from sqlalchemy.orm import Session, relationship
+
 
 Base = declarative_base()
 
@@ -15,3 +31,81 @@ class UILocatorCache(Base):
     selector_value = Column(String, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+
+class APIKey(Base):
+    __tablename__ = "api_keys"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    key = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=True)  # 可选：命名这个 key，例如 "for Zapier"
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="api_keys")
+
+    usages = relationship(
+        "APIUsage", back_populates="api_key", cascade="all, delete-orphan"
+    )
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    provider_user_id = Column(String, unique=True, nullable=False)
+    email = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=True)  # ✅ 添加
+    picture = Column(String, nullable=True)  # ✅ 添加
+    provider = Column(String, nullable=True)  # ✅ 添加，如 'google'
+    api_key = Column(String, unique=True)
+    plan = Column(String, default="free")
+    credits_remaining = Column(String, default="1000")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime)
+
+    api_keys = relationship(
+        "APIKey", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    @classmethod
+    async def get_or_create_google_user(cls, db: Session, user_info: dict):
+        """检查用户是否存在，若不存在则创建"""
+        email = user_info["email"]
+        existing_user = db.query(cls).filter_by(email=email).first()
+        if existing_user:
+            return existing_user
+
+        new_user = cls(
+            email=email,
+            provider_user_id=user_info["sub"],
+            name=user_info.get("name"),
+            picture=user_info.get("picture"),
+            provider="google",
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+
+
+class APIUsage(Base):
+    __tablename__ = "api_usage"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    api_key_id = Column(UUID(as_uuid=True), ForeignKey("api_keys.id"), nullable=False)
+
+    endpoint = Column(String, nullable=False)
+    request_time = Column(DateTime, default=datetime.utcnow)
+    response_time = Column(DateTime)
+    duration_ms = Column(Integer)
+
+    status_code = Column(Integer)
+    input_tokens = Column(Integer, nullable=True)
+    output_tokens = Column(Integer, nullable=True)
+    meta_data = Column(JSON, nullable=True)
+    call_llm = Column(Boolean, nullable=False, default=False)
+
+    api_key = relationship("APIKey", back_populates="usages")

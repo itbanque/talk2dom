@@ -1,5 +1,8 @@
 from talk2dom.db.models import UILocatorCache
 from talk2dom.db.session import SessionLocal
+from sqlalchemy.dialects.postgresql import insert
+from datetime import datetime
+
 import hashlib
 from loguru import logger
 from typing import Optional
@@ -65,25 +68,43 @@ def save_locator(
 ):
     if SessionLocal is None:
         return None
+
     locator_id = compute_locator_id(instruction, html, url)
-    if locator_exists(locator_id):
-        return True
     session = SessionLocal()
+
     try:
-        record = UILocatorCache(
-            id=locator_id,
-            url=url,
-            user_instruction=instruction,
-            html=html,
-            selector_type=selector_type,
-            selector_value=selector_value,
+        stmt = (
+            insert(UILocatorCache)
+            .values(
+                id=locator_id,
+                url=url,
+                user_instruction=instruction,
+                html=html,
+                selector_type=selector_type,
+                selector_value=selector_value,
+            )
+            .on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "url": url,
+                    "user_instruction": instruction,
+                    "html": html,
+                    "selector_type": selector_type,
+                    "selector_value": selector_value,
+                    "updated_at": datetime.utcnow(),
+                },
+            )
         )
-        session.add(record)
+
+        session.execute(stmt)
         session.commit()
-        logger.debug(f"Saved locator with ID: {locator_id}")
+        logger.debug(f"Saved or updated locator with ID: {locator_id}")
+        return True
+
     except Exception as e:
-        session.rollback()  # Rollback on any error
+        session.rollback()
         logger.error(f"Error saving locator: {e}")
+        return False
     finally:
         session.close()
 

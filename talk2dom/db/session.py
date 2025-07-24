@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 import os
 from loguru import logger
 
@@ -15,3 +16,11 @@ if not DB_URI:
 if DB_URI:
     engine = create_engine(DB_URI, echo=False)
     SessionLocal = sessionmaker(bind=engine)
+
+
+def get_db() -> Session:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
