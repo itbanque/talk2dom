@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, UUID4, EmailStr
 from typing import Optional, List
+from datetime import datetime
 
 
 class LocatorRequest(BaseModel):
@@ -14,3 +15,33 @@ class LocatorRequest(BaseModel):
 class LocatorResponse(BaseModel):
     selector_type: str
     selector_value: str
+
+
+class ProjectCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class ProjectResponse(BaseModel):
+    id: UUID4
+    name: str
+    description: Optional[str] = None
+    owner_id: UUID4
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+class InviteRequest(BaseModel):
+    email: EmailStr
+    role: Optional[str] = "member"  # or 'admin'
+
+
+class MemberResponse(BaseModel):
+    user_id: UUID4
+    email: EmailStr
+    role: str
+
+    class Config:
+        orm_mode = True

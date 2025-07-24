@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
+
 from talk2dom.core import call_selector_llm, retry
 from talk2dom.db.cache import get_cached_locator, save_locator
 from talk2dom.db.session import Session, get_db
@@ -6,13 +7,22 @@ from talk2dom.api.schemas import LocatorRequest, LocatorResponse
 from talk2dom.api.utils.validator import SelectorValidator
 from talk2dom.api.utils.html_cleaner import clean_html
 from loguru import logger
-from talk2dom.db.models import User
-from talk2dom.api.deps import get_api_key_user, track_api_usage, get_api_key_id
+from talk2dom.db.models import User, Project
+from talk2dom.api.deps import (
+    get_api_key_user,
+    track_api_usage,
+    get_api_key_id,
+    get_current_project_id,
+)
+from talk2dom.api.limiter import limiter
+from uuid import UUID
+
 
 router = APIRouter()  #
 
 
 @router.post("/locator", response_model=LocatorResponse)
+@limiter.limit("60/minute")
 @retry()
 @track_api_usage()
 def locate(
@@ -21,11 +31,14 @@ def locate(
     db: Session = Depends(get_db),
     user: User = Depends(get_api_key_user),
     api_key_id: str = Depends(get_api_key_id),
+    project_id: int = Depends(get_current_project_id),
 ):
+
     try:
         cleaned_html = clean_html(req.html)
         verifier = SelectorValidator(cleaned_html)
     except Exception as err:
+        logger.error(f"Failed to clean html: {err}")
         raise HTTPException(status_code=500, detail=str(err))
 
     try:
@@ -49,10 +62,11 @@ def locate(
             req.model_provider,
             req.conversation_history,
         )
+        logger.info(f"Location found: {selector}")
         request.state.call_llm = True
+        selector_type, selector_value = selector.selector_type, selector.selector_value
         request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
         request.state.output_tokens = len(selector_type) + len(selector_value)
-        selector_type, selector_value = selector.selector_type, selector.selector_value
 
         if verifier.verify(selector_type, selector_value):
             logger.info(
@@ -64,9 +78,12 @@ def locate(
                 selector_type,
                 selector_value,
                 req.url,
+                project_id=project_id,
             )
             return LocatorResponse(
                 selector_type=selector_type, selector_value=selector_value
             )
+        raise HTTPException(status_code=500, detail="Location not found")
     except Exception as e:
+        logger.error(f"Location failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

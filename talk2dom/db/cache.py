@@ -65,6 +65,7 @@ def save_locator(
     selector_type: str,
     selector_value: str,
     url: Optional[str] = None,
+    project_id=None,
 ):
     if SessionLocal is None:
         return None
@@ -82,6 +83,7 @@ def save_locator(
                 html=html,
                 selector_type=selector_type,
                 selector_value=selector_value,
+                project_id=project_id,
             )
             .on_conflict_do_update(
                 index_elements=["id"],

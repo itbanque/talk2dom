@@ -20,19 +20,6 @@ from sqlalchemy.orm import Session, relationship
 Base = declarative_base()
 
 
-class UILocatorCache(Base):
-    __tablename__ = "ui_locator_cache"
-
-    id = Column(String, primary_key=True)
-    url = Column(String, nullable=False)
-    user_instruction = Column(Text, nullable=False)
-    html = Column(Text, nullable=False)
-    selector_type = Column(String, nullable=False)
-    selector_value = Column(String, nullable=False)
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
-
-
 class APIKey(Base):
     __tablename__ = "api_keys"
 
@@ -66,9 +53,11 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime)
 
+    usages = relationship("APIUsage", back_populates="user")  # ✅ 必须有这个字段
     api_keys = relationship(
         "APIKey", back_populates="user", cascade="all, delete-orphan"
     )
+    memberships = relationship("ProjectMembership", back_populates="user")
 
     @classmethod
     async def get_or_create_google_user(cls, db: Session, user_info: dict):
@@ -95,6 +84,7 @@ class APIUsage(Base):
     __tablename__ = "api_usage"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     api_key_id = Column(UUID(as_uuid=True), ForeignKey("api_keys.id"), nullable=False)
 
     endpoint = Column(String, nullable=False)
@@ -109,3 +99,59 @@ class APIUsage(Base):
     call_llm = Column(Boolean, nullable=False, default=False)
 
     api_key = relationship("APIKey", back_populates="usages")
+    user = relationship("User", back_populates="usages")
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    owner_id = Column(UUID, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    memberships = relationship("ProjectMembership", back_populates="project")
+    locator_cache = relationship(
+        "UILocatorCache", back_populates="project", cascade="all, delete-orphan"
+    )
+
+
+class ProjectMembership(Base):
+    __tablename__ = "project_memberships"
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID, ForeignKey("users.id"))
+    project_id = Column(UUID, ForeignKey("projects.id"))
+    role = Column(String, default="member")  # 可选值: owner, member, viewer
+
+    user = relationship("User", back_populates="memberships")
+    project = relationship("Project", back_populates="memberships")
+
+
+class ProjectInvite(Base):
+    __tablename__ = "project_invites"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"))
+    email = Column(String, nullable=False, index=True)
+    invited_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    accepted = Column(Boolean, default=False)
+
+    project = relationship("Project")
+
+
+class UILocatorCache(Base):
+    __tablename__ = "ui_locator_cache"
+
+    id = Column(String, primary_key=True)
+    url = Column(String, nullable=False)
+    user_instruction = Column(Text, nullable=False)
+    html = Column(Text, nullable=False)
+    selector_type = Column(String, nullable=False)
+    selector_value = Column(String, nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+
+    project = relationship("Project", back_populates="locator_cache")

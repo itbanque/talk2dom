@@ -233,6 +233,7 @@ def get_locator(
     """
     API_URL = os.getenv("TALK2DOM_ENDPOINT")
     API_KEY = os.getenv("TALK2DOM_API_KEY")
+    PROJECT_ID = os.getenv("TALK2DOM_PROJECT_ID")
 
     html = (
         element.find_element(By.TAG_NAME, "body").get_attribute("outerHTML")
@@ -253,7 +254,7 @@ def get_locator(
         logger.warning(
             f"Your are under API mode, sending element location request to {API_URL}"
         )
-        endpoint = f"{API_URL}/inference/locator"
+        endpoint = f"{API_URL}/inference/locator?project_id={PROJECT_ID}"
         headers = {
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json",
@@ -301,7 +302,6 @@ def get_locator(
     return selector.selector_type, selector.selector_value.strip()
 
 
-@retry()
 def get_element(
     driver,
     description,

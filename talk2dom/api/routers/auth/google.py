@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from talk2dom.db.session import get_db
 from talk2dom.db.models import User
 from talk2dom.api.auth.google_oauth import oauth
-from talk2dom.api.deps import get_current_user
+from talk2dom.api.deps import handle_pending_invites
 
 router = APIRouter(prefix="/google", tags=["auth"])  # 区分为 Google OAuth 专用路径
 
@@ -31,5 +31,5 @@ async def auth_google_callback(request: Request, db: AsyncSession = Depends(get_
         "name": user.name,
         "provider": "google",
     }
-
+    handle_pending_invites(db, user)
     return RedirectResponse(url="/")
