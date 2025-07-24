@@ -7,7 +7,7 @@ from talk2dom.api.deps import get_current_user
 import secrets
 
 
-router = APIRouter()  # 区分为 Google OAuth 专用路径
+router = APIRouter()
 
 
 @router.get("/me")

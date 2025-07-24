@@ -7,7 +7,7 @@ from talk2dom.db.models import User
 from talk2dom.api.auth.google_oauth import oauth
 from talk2dom.api.deps import handle_pending_invites
 
-router = APIRouter(prefix="/google", tags=["auth"])  # 区分为 Google OAuth 专用路径
+router = APIRouter(prefix="/google", tags=["auth"])
 
 
 @router.get("/login")
@@ -21,10 +21,8 @@ async def auth_google_callback(request: Request, db: AsyncSession = Depends(get_
     token = await oauth.google.authorize_access_token(request)
     user_info = token["userinfo"]
 
-    # 保存到数据库（如果不存在则插入）
     user = await User.get_or_create_google_user(db, user_info)
 
-    # 设置 session
     request.session["user"] = {
         "id": str(user.id),
         "email": user.email,

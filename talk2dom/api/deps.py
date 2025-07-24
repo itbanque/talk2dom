@@ -148,16 +148,13 @@ def rate_limiter_by_user(plan_rates: dict = None):
             if not user:
                 raise Exception("Missing user for rate limiting.")
 
-            # 获取速率配置
             plan = getattr(user, "plan", "free")
             rate = plan_rates.get(plan, "5/minute")
             logger.info(f"⏳ Rate limiting for user {user.id} ({plan}): {rate}")
 
-            # 用 user ID 做 key，如果没有就 fallback 到 IP
             def key_func():
                 return str(user.id)
 
-            # 执行限速检查（注意，这里不是装饰而是直接检查）
             try:
                 limit_decorator = limiter.limit(rate)
                 return limit_decorator(func)(*args, **kwargs)
@@ -190,7 +187,6 @@ async def get_current_project_id(
     if not project_id:
         raise HTTPException(status_code=400, detail="Missing project_id")
 
-    # 验证项目是否存在
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
