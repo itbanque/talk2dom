@@ -7,7 +7,7 @@ from talk2dom.api.schemas import LocatorRequest, LocatorResponse
 from talk2dom.api.utils.validator import SelectorValidator
 from talk2dom.api.utils.html_cleaner import clean_html
 from loguru import logger
-from talk2dom.db.models import User, Project
+from talk2dom.db.models import User
 from talk2dom.api.deps import (
     get_api_key_user,
     track_api_usage,
