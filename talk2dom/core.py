@@ -254,7 +254,7 @@ def get_locator(
         logger.warning(
             f"Your are under API mode, sending element location request to {API_URL}"
         )
-        endpoint = f"{API_URL}/inference/locator?project_id={PROJECT_ID}"
+        endpoint = f"{API_URL}/api/v1/inference/locator?project_id={PROJECT_ID}"
         headers = {
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json",

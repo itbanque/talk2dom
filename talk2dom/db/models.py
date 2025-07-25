@@ -47,6 +47,8 @@ class User(Base):
     picture = Column(String, nullable=True)  # ✅ 添加
     provider = Column(String, nullable=True)  # ✅ 添加，如 'google'
     api_key = Column(String, unique=True)
+    stripe_customer_id = Column(String, unique=True)
+    stripe_subscription_id = Column(String, unique=True)
     plan = Column(String, default="free")
     credits_remaining = Column(String, default="1000")
     is_active = Column(Boolean, default=True)
