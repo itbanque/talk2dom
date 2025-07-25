@@ -15,7 +15,6 @@ from talk2dom.api.deps import (
     get_current_project_id,
 )
 from talk2dom.api.limiter import limiter
-from uuid import UUID
 
 
 router = APIRouter()  #
