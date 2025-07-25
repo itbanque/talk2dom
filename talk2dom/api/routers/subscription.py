@@ -19,7 +19,11 @@ def start_subscription(plan: str, user: User = Depends(get_current_user)):
 
 
 @router.get("/success", response_class=HTMLResponse)
-def subscription_success(session_id: str, db: Session = Depends(get_db)):
+def subscription_success(
+    session_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     session = stripe.checkout.Session.retrieve(session_id)
     customer_email = session.get("customer_email")
     subscription_id = session.get("subscription")
@@ -38,7 +42,7 @@ def subscription_success(session_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/cancel", response_class=HTMLResponse)
-def subscription_cancel():
+def subscription_cancel(user: User = Depends(get_current_user)):
     return """
         <html>
             <head><title>Subscription Canceled</title></head>
