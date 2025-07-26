@@ -5,6 +5,7 @@ from talk2dom.db.models import User, APIKey
 from talk2dom.db.session import get_db
 from talk2dom.api.deps import get_current_user
 import secrets
+import os
 
 
 router = APIRouter()
@@ -17,6 +18,11 @@ async def me(user: User = Depends(get_current_user)):
         "email": user.email,
         "name": user.name,
         "provider": user.provider,
+        "plan": user.plan,
+        "one_time_credits": user.one_time_credits,
+        "subscription_credits": user.subscription_credits,
+        "subscription_status": user.subscription_status,
+        "subscription_end_date": user.subscription_end_date,
     }
 
 
@@ -31,7 +37,12 @@ def create_api_key(
     db.add(api_key)
     db.commit()
     db.refresh(api_key)
-    return {"api_key": key_value, "id": api_key.id, "name": api_key.name}
+    return {
+        "api_key": key_value,
+        "id": api_key.id,
+        "name": api_key.name,
+        "created_at": api_key.created_at,
+    }
 
 
 @router.get("/api-keys")
@@ -44,6 +55,7 @@ def list_api_keys(
         {
             "id": k.id,
             "name": k.name,
+            "key": k.key,
             "created_at": k.created_at,
             "is_active": k.is_active,
         }
@@ -72,4 +84,4 @@ def delete_api_key(
 @router.get("/logout")
 def logout(request: Request):
     request.session.clear()
-    return RedirectResponse(url="/")
+    return RedirectResponse(url=os.environ.get("UI_DOMAIN"))

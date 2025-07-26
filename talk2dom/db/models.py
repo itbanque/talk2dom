@@ -43,14 +43,18 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     provider_user_id = Column(String, unique=True, nullable=False)
     email = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=True)
     name = Column(String, nullable=True)  # ✅ 添加
     picture = Column(String, nullable=True)  # ✅ 添加
     provider = Column(String, nullable=True)  # ✅ 添加，如 'google'
     api_key = Column(String, unique=True)
     stripe_customer_id = Column(String, unique=True)
     stripe_subscription_id = Column(String, unique=True)
+    subscription_end_date = Column(DateTime, nullable=True)
+    subscription_status = Column(String, nullable=True)
     plan = Column(String, default="free")
-    credits_remaining = Column(String, default="1000")
+    subscription_credits = Column(Integer, default=100)
+    one_time_credits = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime)
@@ -135,6 +139,7 @@ class ProjectInvite(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"))
     email = Column(String, nullable=False, index=True)
+    invited_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     invited_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     accepted = Column(Boolean, default=False)

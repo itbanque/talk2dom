@@ -1,5 +1,6 @@
 import stripe
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from talk2dom.api.stripe_service import create_checkout_session
 from talk2dom.db.models import User
 from talk2dom.api.deps import get_current_user
@@ -15,6 +16,12 @@ def start_subscription(plan: str, user: User = Depends(get_current_user)):
     if plan == "free":
         return {"message": "Free plan does not require subscription"}
     url = create_checkout_session(user.email, plan)
+    return {"checkout_url": url}
+
+
+@router.post("/create-one-time")
+def start_subscription(plan: str, user: User = Depends(get_current_user)):
+    url = create_checkout_session(user.email, plan, mode="payment")
     return {"checkout_url": url}
 
 
@@ -53,3 +60,39 @@ def subscription_cancel(user: User = Depends(get_current_user)):
             </body>
         </html>
     """
+
+
+@router.post("/cancel")
+async def cancel_subscription(current_user: User = Depends(get_current_user)):
+    if not current_user.stripe_subscription_id:
+        raise HTTPException(
+            status_code=400, detail="User does not have an active subscription."
+        )
+
+    try:
+        # Set cancel_at_period_end = True to keep subscription active until end of billing period
+        stripe.Subscription.modify(
+            current_user.stripe_subscription_id, cancel_at_period_end=True
+        )
+        return JSONResponse(content={"detail": "Subscription cancelled successfully."})
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=500, detail=f"Stripe error: {str(e)}")
+
+
+@router.get("/history")
+async def get_billing_history(user=Depends(get_current_user)):
+    customer_id = user.stripe_customer_id
+    if customer_id is None:
+        return []
+    invoices = stripe.Invoice.list(customer=customer_id, limit=10)
+    return [
+        {
+            "id": inv.id,
+            "amount_paid": inv.amount_paid,
+            "currency": inv.currency,
+            "status": inv.status,
+            "created": inv.created,
+            "invoice_pdf": inv.invoice_pdf,
+        }
+        for inv in invoices.auto_paging_iter()
+    ]

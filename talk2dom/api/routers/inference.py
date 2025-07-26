@@ -30,7 +30,7 @@ def locate(
     db: Session = Depends(get_db),
     user: User = Depends(get_api_key_user),
     api_key_id: str = Depends(get_api_key_id),
-    project_id: int = Depends(get_current_project_id),
+    project_id: str = Depends(get_current_project_id),
 ):
 
     try:
@@ -38,12 +38,12 @@ def locate(
         verifier = SelectorValidator(cleaned_html)
     except Exception as err:
         logger.error(f"Failed to clean html: {err}")
-        raise HTTPException(status_code=500, detail=str(err))
+        raise HTTPException(status_code=500, detail="Invalid HTML")
 
     try:
         request.state.call_llm = False
         selector_type, selector_value = get_cached_locator(
-            req.user_instruction, cleaned_html, req.url
+            req.user_instruction, cleaned_html, req.url, project_id
         )
         if selector_type and selector_value:
             if verifier.verify(selector_type, selector_value):

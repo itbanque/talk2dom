@@ -45,3 +45,24 @@ class MemberResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class InviteResponse(BaseModel):
+    id: UUID4
+    email: str
+    invited_by_user_id: UUID4
+    created_at: datetime
+    accepted: bool
+
+    class Config:
+        orm_mode = True
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str

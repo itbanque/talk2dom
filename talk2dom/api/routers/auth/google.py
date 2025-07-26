@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,4 +31,5 @@ async def auth_google_callback(request: Request, db: AsyncSession = Depends(get_
         "provider": "google",
     }
     handle_pending_invites(db, user)
-    return RedirectResponse(url="/")
+    response = RedirectResponse(url=f"{os.environ.get("UI_DOMAIN")}/projects")
+    return response

@@ -84,7 +84,10 @@ def track_api_usage():
                 )
 
             project_owner = get_project_owner(db, project_id)
-            if int(project_owner.credits_remaining) <= 0:
+            if (
+                int(project_owner.subscription_credits + project_owner.one_time_credits)
+                <= 0
+            ):
                 raise HTTPException(status_code=402, detail="Not enough credits")
 
             start = datetime.utcnow()
@@ -173,6 +176,7 @@ def handle_pending_invites(db: Session, user: User):
     for invite in invites:
         db.add(ProjectMembership(user_id=user.id, project_id=invite.project_id))
         invite.accepted = True
+        invite.invited_user_id = user.id
     db.commit()
 
 
@@ -204,17 +208,14 @@ def get_project_owner(db: Session, project_id: UUID) -> User:
 
 
 def consume_credit(db: Session, user: User, amount: int = 1):
-    try:
-        current_credits = Decimal(user.credits_remaining or "0")
-    except InvalidOperation:
-        raise HTTPException(status_code=500, detail="Invalid credit format")
-
-    if current_credits < amount:
-        raise HTTPException(status_code=402, detail="Not enough credits")
-
-    new_credits = current_credits - Decimal(amount)
-    logger.info(f"User: {user.id}, Credits remaining: {new_credits}")
-    user.credits_remaining = str(new_credits)
+    if user.subscription_credits >= amount:
+        user.subscription_credits -= amount
+    elif user.subscription_credits + user.one_time_credits >= amount:
+        remaining = amount - user.subscription_credits
+        user.subscription_credits = 0
+        user.one_time_credits -= remaining
+    else:
+        raise HTTPException(status_code=400, detail="Credit not enough")
 
 
 def has_project_access(db: Session, user_id: UUID, project_id: UUID):

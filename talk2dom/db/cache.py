@@ -8,21 +8,30 @@ from loguru import logger
 from typing import Optional
 
 
-def compute_locator_id(instruction: str, html: str, url: Optional[str] = None) -> str:
-    html_key = url if url else html
-    raw = (instruction.strip() + html_key.strip()).encode("utf-8")
+def compute_locator_id(
+    instruction: str,
+    html: str,
+    url: Optional[str] = "",
+    project_id: Optional[str] = "",
+) -> str:
+    raw = (instruction.strip() + url.strip() + project_id.strip()).encode("utf-8")
     uuid = hashlib.sha256(raw).hexdigest()
     logger.debug(
-        f"Computing locator ID for instruction: {instruction[:50]}... and source length: {len(html_key)}, url: {url}, UUID: {uuid}"
+        f"Computing locator ID for instruction: {instruction[:50]}... and source length: {len(html)}, url: {url}, UUID: {uuid}"
     )
     return uuid
 
 
-def get_cached_locator(instruction: str, html: str, url: Optional[str] = None):
+def get_cached_locator(
+    instruction: str,
+    html: str,
+    url: Optional[str] = None,
+    project_id: Optional[str] = "",
+) -> str:
     if SessionLocal is None:
         return None, None
 
-    locator_id = compute_locator_id(instruction, html, url)
+    locator_id = compute_locator_id(instruction, html, url, project_id)
     session = SessionLocal()
 
     try:
@@ -70,7 +79,7 @@ def save_locator(
     if SessionLocal is None:
         return None
 
-    locator_id = compute_locator_id(instruction, html, url)
+    locator_id = compute_locator_id(instruction, html, url, project_id)
     session = SessionLocal()
 
     try:
