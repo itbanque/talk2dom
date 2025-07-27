@@ -16,7 +16,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from talk2dom.db.cache import get_cached_locator, save_locator, delete_locator
+from talk2dom.db.cache import get_cached_locator, save_locator
 from talk2dom.db.init import init_db
 import functools
 import requests
@@ -352,8 +352,6 @@ def get_element(
             url=driver.current_url,
         )
     except Exception as e:
-        # remove
-        delete_locator(description, "", driver.current_url)
         raise e
 
     highlight_element(driver, elem, duration=duration)

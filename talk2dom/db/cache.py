@@ -1,4 +1,4 @@
-from talk2dom.db.models import UILocatorCache
+from talk2dom.db.models import UILocatorCache, HTML
 from talk2dom.db.session import SessionLocal
 from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime
@@ -10,14 +10,15 @@ from typing import Optional
 
 def compute_locator_id(
     instruction: str,
-    html: str,
+    html_id: str,
     url: Optional[str] = "",
     project_id: Optional[str] = "",
 ) -> str:
-    raw = (instruction.strip() + url.strip() + project_id.strip()).encode("utf-8")
+
+    raw = (instruction.strip() + html_id + project_id.strip()).encode("utf-8")
     uuid = hashlib.sha256(raw).hexdigest()
     logger.debug(
-        f"Computing locator ID for instruction: {instruction[:50]}... and source length: {len(html)}, url: {url}, UUID: {uuid}"
+        f"Computing locator ID for instruction: {instruction[:50]}... and html: {html_id}, url: {url}, UUID: {uuid}"
     )
     return uuid
 
@@ -31,7 +32,8 @@ def get_cached_locator(
     if SessionLocal is None:
         return None, None
 
-    locator_id = compute_locator_id(instruction, html, url, project_id)
+    html_id = hashlib.sha256(html.encode("utf-8")).hexdigest()
+    locator_id = compute_locator_id(instruction, html_id, url, project_id)
     session = SessionLocal()
 
     try:
@@ -70,26 +72,33 @@ def locator_exists(locator_id) -> bool:
 
 def save_locator(
     instruction: str,
-    html: str,
+    html_backbone: str,
     selector_type: str,
     selector_value: str,
     url: Optional[str] = None,
     project_id=None,
+    html=str,
 ):
     if SessionLocal is None:
         return None
 
-    locator_id = compute_locator_id(instruction, html, url, project_id)
+    html_id = hashlib.sha256(html_backbone.encode("utf-8")).hexdigest()
+    locator_id = compute_locator_id(instruction, html_id, url, project_id)
     session = SessionLocal()
 
     try:
+        existing_html = session.query(HTML).filter_by(id=html_id).first()
+        if not existing_html:
+            session.add(
+                HTML(id=html_id, row_html=html, backbone=html_backbone, url=url or "")
+            )
         stmt = (
             insert(UILocatorCache)
             .values(
                 id=locator_id,
                 url=url,
                 user_instruction=instruction,
-                html=html,
+                html_id=html_id,
                 selector_type=selector_type,
                 selector_value=selector_value,
                 project_id=project_id,
@@ -99,7 +108,7 @@ def save_locator(
                 set_={
                     "url": url,
                     "user_instruction": instruction,
-                    "html": html,
+                    "html_id": html_id,
                     "selector_type": selector_type,
                     "selector_value": selector_value,
                     "updated_at": datetime.utcnow(),
@@ -115,38 +124,6 @@ def save_locator(
     except Exception as e:
         session.rollback()
         logger.error(f"Error saving locator: {e}")
-        return False
-    finally:
-        session.close()
-
-
-def delete_locator(
-    instruction: str,
-    html: str,
-    url: Optional[str] = None,
-) -> bool:
-    """
-    Delete a locator from the cache by its ID.
-    Returns True if deleted, False if not found or error occurred.
-    """
-    if SessionLocal is None:
-        logger.warning("SessionLocal is None, skipping deletion.")
-        return False
-
-    session = SessionLocal()
-    locator_id = compute_locator_id(instruction, html, url)
-    try:
-        row = session.query(UILocatorCache).filter_by(id=locator_id).first()
-        if not row:
-            logger.debug(f"No locator found with ID: {locator_id}")
-            return False
-        session.delete(row)
-        session.commit()
-        logger.debug(f"Deleted locator with ID: {locator_id}")
-        return True
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Failed to delete locator ID {locator_id}: {e}")
         return False
     finally:
         session.close()

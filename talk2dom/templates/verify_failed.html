@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Verification Failed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        font-family: sans-serif;
+        background-color: #f8fafc;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+
+      .container {
+        background: white;
+        padding: 2rem 3rem;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      h1 {
+        color: #dc2626;
+        margin-bottom: 1rem;
+      }
+
+      p {
+        color: #374151;
+        font-size: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      a.button {
+        background-color: #3b82f6;
+        color: white;
+        padding: 0.6rem 1.5rem;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 500;
+        transition: background-color 0.2s ease;
+      }
+
+      a.button:hover {
+        background-color: #2563eb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>❌ Verification Failed</h1>
+      <p>{{ message }}</p>
+      <a href="{{ login_url }}" class="button">Go to Login</a>
+    </div>
+  </body>
+</html>

@@ -108,6 +108,7 @@ def track_api_usage():
             usage = APIUsage(
                 api_key_id=api_key_id,
                 user_id=user.id,
+                project_id=project_id,
                 endpoint=str(request.url.path),
                 request_time=start,
                 response_time=end,
@@ -174,6 +175,20 @@ def rate_limiter_by_user(plan_rates: dict = None):
 def handle_pending_invites(db: Session, user: User):
     invites = db.query(ProjectInvite).filter_by(email=user.email, accepted=False).all()
     for invite in invites:
+        num_limit = {
+            "free": 1,
+            "developer": 2,
+            "plan": 10,
+            "enterprise": float("inf"),
+        }
+        members = (
+            db.query(Project)
+            .join(ProjectMembership, Project.id == invite.project_id)
+            .filter(ProjectMembership.user_id == invite.invited_by_user_id)
+            .all()
+        )
+        if len(members) >= num_limit.get(user.plan, 0):
+            continue
         db.add(ProjectMembership(user_id=user.id, project_id=invite.project_id))
         invite.accepted = True
         invite.invited_user_id = user.id

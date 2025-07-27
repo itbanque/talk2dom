@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func, cast, Date
+
 from typing import List
+from datetime import datetime, timedelta
 
 from uuid import UUID
 from talk2dom.db.session import get_db
 from talk2dom.db.models import User
-from talk2dom.db.models import Project, ProjectMembership, ProjectInvite
+from talk2dom.db.models import Project, ProjectMembership, ProjectInvite, APIUsage
 from talk2dom.api.deps import get_current_user, get_api_key_user
 from talk2dom.api.schemas import (
     ProjectCreate,
@@ -24,6 +27,24 @@ def create_project(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    num_limit = {
+        "free": 2,
+        "developer": 10,
+        "plan": float("inf"),
+        "enterprise": float("inf"),
+    }
+    projects = (
+        db.query(Project)
+        .join(ProjectMembership, Project.id == ProjectMembership.project_id)
+        .filter(ProjectMembership.user_id == current_user.id)
+        .all()
+    )
+    if len(projects) >= num_limit.get(current_user.plan, 0):
+        raise HTTPException(
+            status_code=400,
+            detail="Too many projects, please consider upgrade your plan",
+        )
+
     project = Project(name=project_in.name, owner_id=current_user.id)
     db.add(project)
     db.commit()
@@ -45,6 +66,26 @@ def invite_user_to_project(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
+    num_limit = {
+        "free": 1,
+        "developer": 2,
+        "plan": 10,
+        "enterprise": float("inf"),
+    }
+
+    members = (
+        db.query(ProjectMembership)
+        .filter(
+            ProjectMembership.project_id == project_id,
+        )
+        .all()
+    )
+    if len(members) >= num_limit.get(user.plan, 0):
+        raise HTTPException(
+            status_code=400,
+            detail="Too many members under project, consider upgrade your plan",
+        )
+
     # 检查是否已是成员
     existing_member = (
         db.query(ProjectMembership)
@@ -256,3 +297,38 @@ def remove_project_invite_by_user(
     db.delete(invite)
     db.commit()
     return
+
+
+@router.get("/{project_id}/api-usage")
+def get_api_usage(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # 校验项目访问权限
+    project_member = (
+        db.query(ProjectMembership)
+        .filter_by(project_id=project_id, user_id=current_user.id)
+        .first()
+    )
+    if not project_member:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    start_date = datetime.utcnow() - timedelta(days=30)
+
+    results = (
+        db.query(
+            cast(APIUsage.request_time, Date).label("date"),
+            func.count().label("count"),
+        )
+        .filter(
+            APIUsage.project_id == project_id,
+            APIUsage.request_time >= start_date,
+            APIUsage.status_code == 200,
+        )
+        .group_by(cast(APIUsage.request_time, Date))
+        .order_by(cast(APIUsage.request_time, Date))
+        .all()
+    )
+
+    return [{"timestamp": str(row.date), "count": row.count} for row in results]

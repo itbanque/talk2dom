@@ -8,8 +8,8 @@ class LocatorRequest(BaseModel):
     html: str
     user_instruction: str
     conversation_history: Optional[List[List[str]]] = None
-    model: Optional[str] = "gpt-4o"
-    model_provider: Optional[str] = "openai"
+    # model: Optional[str] = "gpt-4o"
+    # model_provider: Optional[str] = "openai"
 
 
 class LocatorResponse(BaseModel):

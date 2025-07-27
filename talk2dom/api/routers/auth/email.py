@@ -5,8 +5,11 @@ from sqlalchemy.orm import Session
 from talk2dom.db.models import User
 from talk2dom.api.schemas import RegisterRequest, LoginRequest
 from talk2dom.api.utils import hash_helper, session
+from talk2dom.api.utils.token import generate_email_token
+from talk2dom.api.utils.email import send_verification_email
 from talk2dom.db.session import get_db  # 自己的 DB session 依赖
 from talk2dom.api.deps import handle_pending_invites
+from loguru import logger
 
 import os
 from datetime import datetime
@@ -15,7 +18,9 @@ router = APIRouter(prefix="/email", tags=["auth"])
 
 
 @router.post("/register")
-def register_user(data: RegisterRequest, db: Session = Depends(get_db)):
+def register_user(
+    data: RegisterRequest, request: Request, db: Session = Depends(get_db)
+):
     existing_user = db.query(User).filter(User.email == data.email).first()
     if existing_user:
         raise HTTPException(
@@ -32,7 +37,14 @@ def register_user(data: RegisterRequest, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {"message": "User registered successfully"}
+
+    # Send verification email
+    token = generate_email_token(data.email)
+    base_url = str(request.base_url).rstrip("/")
+    verify_url = f"{base_url}/api/v1/user/verify-email?token={token}"
+    # send_verification_email(to_email=data.email, verify_url=verify_url)
+    logger.info(f"Sending verification email to {verify_url}")
+    return {"message": "Registration successful. Please verify your email."}
 
 
 @router.post("/login")

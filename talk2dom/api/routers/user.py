@@ -1,14 +1,21 @@
 from fastapi import APIRouter, Depends, Request, Body, HTTPException
 from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
+
 from sqlalchemy.orm import Session
 from talk2dom.db.models import User, APIKey
 from talk2dom.db.session import get_db
 from talk2dom.api.deps import get_current_user
+from talk2dom.api.utils.token import confirm_email_token, generate_email_token
 import secrets
 import os
 
+from loguru import logger
 
 router = APIRouter()
+
+templates = Jinja2Templates(directory="talk2dom/templates")
+UI_DOMAIN = os.getenv("UI_DOMAIN", "http://localhost:3000")
 
 
 @router.get("/me")
@@ -23,6 +30,7 @@ async def me(user: User = Depends(get_current_user)):
         "subscription_credits": user.subscription_credits,
         "subscription_status": user.subscription_status,
         "subscription_end_date": user.subscription_end_date,
+        "is_active": user.is_active,
     }
 
 
@@ -79,6 +87,63 @@ def delete_api_key(
     db.delete(key)
     db.commit()
     return {"detail": "API key deleted"}
+
+
+@router.get("/verify-email")
+def verify_email(request: Request, token: str, db: Session = Depends(get_db)):
+    email = confirm_email_token(token)
+    if not email:
+        return templates.TemplateResponse(
+            "verify_failed.html",
+            {
+                "request": request,
+                "login_url": f"{UI_DOMAIN}/login",
+                "message": "The email verification link is invalid or has expired. Please try again.",
+            },
+        )
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        return templates.TemplateResponse(
+            "verify_failed.html",
+            {
+                "request": request,
+                "login_url": f"{UI_DOMAIN}/login",
+                "message": "The account does not exist. Please try again.",
+            },
+        )
+
+    if user.is_active:
+        return templates.TemplateResponse(
+            "verify_success.html",
+            {
+                "request": request,
+                "login_url": f"{UI_DOMAIN}/login",
+                "message": "Account already verified.",
+            },
+        )
+
+    user.is_active = True
+    db.commit()
+
+    return templates.TemplateResponse(
+        "verify_success.html",
+        {
+            "request": request,
+            "login_url": f"{UI_DOMAIN}/login",
+            "message": "Your email has been successfully verified. You can now log in to your account.",
+        },
+    )
+
+
+@router.post("/resend-verify-email")
+def resend_verify_email(request: Request, user: User = Depends(get_current_user)):
+    token = generate_email_token(user.email)
+    base_url = str(request.base_url).rstrip("/")
+    verify_url = f"{base_url}/api/v1/user/verify-email?token={token}"
+    # send_verification_email(to_email=data.email, verify_url=verify_url)
+    logger.info(f"Sending verification email to {verify_url}")
+    return {"message": "Verification email sent."}
 
 
 @router.get("/logout")

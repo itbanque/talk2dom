@@ -55,7 +55,7 @@ class User(Base):
     plan = Column(String, default="free")
     subscription_credits = Column(Integer, default=100)
     one_time_credits = Column(Integer, default=0)
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime)
 
@@ -91,6 +91,7 @@ class APIUsage(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
     api_key_id = Column(UUID(as_uuid=True), ForeignKey("api_keys.id"), nullable=False)
 
     endpoint = Column(String, nullable=False)
@@ -106,6 +107,7 @@ class APIUsage(Base):
 
     api_key = relationship("APIKey", back_populates="usages")
     user = relationship("User", back_populates="usages")
+    project = relationship("Project", back_populates="usages")
 
 
 class Project(Base):
@@ -120,6 +122,7 @@ class Project(Base):
     locator_cache = relationship(
         "UILocatorCache", back_populates="project", cascade="all, delete-orphan"
     )
+    usages = relationship("APIUsage", back_populates="project")
 
 
 class ProjectMembership(Base):
@@ -153,7 +156,7 @@ class UILocatorCache(Base):
     id = Column(String, primary_key=True)
     url = Column(String, nullable=False)
     user_instruction = Column(Text, nullable=False)
-    html = Column(Text, nullable=False)
+    html_id = Column(String, ForeignKey("html.id"))
     selector_type = Column(String, nullable=False)
     selector_value = Column(String, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
@@ -162,3 +165,18 @@ class UILocatorCache(Base):
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
 
     project = relationship("Project", back_populates="locator_cache")
+    html = relationship("HTML", back_populates="locator_cache")
+
+
+class HTML(Base):
+
+    __tablename__ = "html"
+
+    id = Column(String, primary_key=True)
+    url = Column(String, nullable=True)
+    backbone = Column(Text, nullable=False)
+    row_html = Column(Text, nullable=False)
+
+    locator_cache = relationship(
+        "UILocatorCache", back_populates="html", cascade="all, delete-orphan"
+    )

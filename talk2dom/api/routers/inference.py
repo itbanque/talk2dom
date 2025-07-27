@@ -5,7 +5,7 @@ from talk2dom.db.cache import get_cached_locator, save_locator
 from talk2dom.db.session import Session, get_db
 from talk2dom.api.schemas import LocatorRequest, LocatorResponse
 from talk2dom.api.utils.validator import SelectorValidator
-from talk2dom.api.utils.html_cleaner import clean_html
+from talk2dom.api.utils.html_cleaner import clean_html, clean_html_keep_structure_only
 from loguru import logger
 from talk2dom.db.models import User
 from talk2dom.api.deps import (
@@ -34,6 +34,7 @@ def locate(
 ):
 
     try:
+        structure_html = clean_html_keep_structure_only(req.html)
         cleaned_html = clean_html(req.html)
         verifier = SelectorValidator(cleaned_html)
     except Exception as err:
@@ -43,7 +44,7 @@ def locate(
     try:
         request.state.call_llm = False
         selector_type, selector_value = get_cached_locator(
-            req.user_instruction, cleaned_html, req.url, project_id
+            req.user_instruction, structure_html, req.url, project_id
         )
         if selector_type and selector_value:
             if verifier.verify(selector_type, selector_value):
@@ -57,8 +58,8 @@ def locate(
         selector = call_selector_llm(
             req.user_instruction,
             cleaned_html,
-            req.model,
-            req.model_provider,
+            "gpt-4o",
+            "openai",
             req.conversation_history,
         )
         logger.info(f"Location found: {selector}")
@@ -73,11 +74,12 @@ def locate(
             )
             save_locator(
                 req.user_instruction,
-                cleaned_html,
+                structure_html,
                 selector_type,
                 selector_value,
                 req.url,
                 project_id=project_id,
+                html=cleaned_html,
             )
             return LocatorResponse(
                 selector_type=selector_type, selector_value=selector_value
