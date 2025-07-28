@@ -28,6 +28,10 @@ class ProjectResponse(BaseModel):
     description: Optional[str] = None
     owner_id: UUID4
     created_at: datetime
+    owner_email: str
+    member_count: int
+    api_calls: int
+    is_active: bool
 
     class Config:
         orm_mode = True

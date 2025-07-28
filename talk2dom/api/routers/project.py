@@ -20,6 +20,13 @@ from talk2dom.api.schemas import (
 
 router = APIRouter()
 
+member_limit = {
+    "free": 1,
+    "developer": 2,
+    "plan": 10,
+    "enterprise": float("inf"),
+}
+
 
 @router.post("", response_model=ProjectResponse)
 def create_project(
@@ -66,12 +73,6 @@ def invite_user_to_project(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    num_limit = {
-        "free": 1,
-        "developer": 2,
-        "plan": 10,
-        "enterprise": float("inf"),
-    }
 
     members = (
         db.query(ProjectMembership)
@@ -80,7 +81,7 @@ def invite_user_to_project(
         )
         .all()
     )
-    if len(members) >= num_limit.get(user.plan, 0):
+    if len(members) >= member_limit.get(user.plan, 0):
         raise HTTPException(
             status_code=400,
             detail="Too many members under project, consider upgrade your plan",
@@ -153,12 +154,34 @@ def list_user_projects(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
+
     projects = (
         db.query(Project)
         .join(ProjectMembership, Project.id == ProjectMembership.project_id)
         .filter(ProjectMembership.user_id == user.id)
         .all()
     )
+
+    for project in projects:
+        member_count = (
+            db.query(ProjectMembership)
+            .filter(ProjectMembership.project_id == project.id)
+            .count()
+        )
+        api_calls = (
+            db.query(func.count(APIUsage.id))
+            .filter(APIUsage.project_id == project.id)
+            .scalar()
+        )
+        owner = db.query(User).filter_by(id=project.owner_id).first()
+        setattr(project, "owner_email", owner.email)
+        if member_count > member_limit.get(owner.plan, 0):
+            setattr(project, "is_active", False)
+        else:
+            setattr(project, "is_active", True)
+        setattr(project, "member_count", member_count)
+        setattr(project, "api_calls", api_calls)
+
     return projects
 
 
