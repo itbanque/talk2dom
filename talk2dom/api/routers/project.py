@@ -63,6 +63,11 @@ def create_project(
     db.add(membership)
     db.commit()
 
+    setattr(project, "member_count", 1)
+    setattr(project, "api_calls", 0)
+    setattr(project, "is_active", True)
+    setattr(project, "owner_email", current_user.email)
+
     return project
 
 
