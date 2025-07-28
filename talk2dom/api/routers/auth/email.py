@@ -5,7 +5,8 @@ from talk2dom.db.models import User
 from talk2dom.api.schemas import RegisterRequest, LoginRequest
 from talk2dom.api.utils import hash_helper
 from talk2dom.api.utils.token import generate_email_token
-from talk2dom.db.session import get_db  # 自己的 DB session 依赖
+from talk2dom.api.utils.email import send_verification_email
+from talk2dom.db.session import get_db
 from talk2dom.api.deps import handle_pending_invites
 from loguru import logger
 
@@ -39,8 +40,8 @@ def register_user(
     token = generate_email_token(data.email)
     base_url = str(request.base_url).rstrip("/")
     verify_url = f"{base_url}/api/v1/user/verify-email?token={token}"
-    # send_verification_email(to_email=data.email, verify_url=verify_url)
-    logger.info(f"Sending verification email to {verify_url}")
+    send_verification_email(to_email=data.email, verify_url=verify_url)
+    logger.info(f"Sending verification email to {data.email}, URL: {verify_url}")
     return {"message": "Registration successful. Please verify your email."}
 
 
@@ -61,11 +62,9 @@ def login_user(
     if not hash_helper.verify_password(data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
-    # 更新最后登录时间
     user.last_login = datetime.utcnow()
     db.commit()
 
-    # 创建 session
     request.session["user"] = {
         "id": str(user.id),
         "email": user.email,

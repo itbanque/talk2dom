@@ -6,6 +6,9 @@ from loguru import logger
 
 
 def send_verification_email(to_email: str, verify_url: str):
+    if not os.environ.get("SENDGRID_API_KEY"):
+        logger.error("SENDGRID_API_KEY not set")
+        return
     message = Mail(
         from_email="noreply@itbanque.com",
         to_emails=to_email,
