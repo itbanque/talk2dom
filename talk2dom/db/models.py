@@ -59,7 +59,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime)
 
-    usages = relationship("APIUsage", back_populates="user")  # ✅ 必须有这个字段
+    usages = relationship("APIUsage", back_populates="user")
     api_keys = relationship(
         "APIKey", back_populates="user", cascade="all, delete-orphan"
     )
@@ -79,6 +79,7 @@ class User(Base):
             name=user_info.get("name"),
             picture=user_info.get("picture"),
             provider="google",
+            is_active=True,
         )
         db.add(new_user)
         db.commit()

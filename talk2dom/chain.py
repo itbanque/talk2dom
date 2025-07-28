@@ -44,7 +44,7 @@ class ActionChain:
         logger.info(
             f"Find element, description: {description}, element: {self._current_element}"
         )
-        self._conversation_history.append([description, self._current_element])
+        self._conversation_history.append([description, self._current_element.text])
         return self
 
     def valid(self, description):
@@ -70,7 +70,7 @@ class ActionChain:
         """
         self._current_element = self.driver.find_element(by, value)
         highlight_element(self.driver, self._current_element, duration=duration)
-        self._conversation_history.append(["", self._current_element])
+        self._conversation_history.append(["", self._current_element.text])
         return self
 
     def click(self):
@@ -114,15 +114,15 @@ class ActionChain:
     def assert_text_contains(self, substring: str):
         assert self._current_element, "No element found for assertion"
         actual = self._current_element.text.strip()
-        assert substring in actual, (
-            f"Expected to contain: '{substring}', but got: '{actual}'"
-        )
+        assert (
+            substring in actual
+        ), f"Expected to contain: '{substring}', but got: '{actual}'"
         return self
 
     def assert_exists(self):
-        assert self._current_element is not None, (
-            "Expected element to exist but found none"
-        )
+        assert (
+            self._current_element is not None
+        ), "Expected element to exist but found none"
         return self
 
     def assert_visible(self):
@@ -131,9 +131,9 @@ class ActionChain:
         return self
 
     def assert_page_not_contains(self, text: str):
-        assert text not in self.driver.page_source, (
-            f"Unexpected text found in page: '{text}'"
-        )
+        assert (
+            text not in self.driver.page_source
+        ), f"Unexpected text found in page: '{text}'"
         return self
 
     def assert_page_contains(self, text: str):

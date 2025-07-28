@@ -21,7 +21,7 @@ from talk2dom.api.schemas import (
 router = APIRouter()
 
 
-@router.post("/", response_model=ProjectResponse)
+@router.post("", response_model=ProjectResponse)
 def create_project(
     project_in: ProjectCreate,
     db: Session = Depends(get_db),
@@ -148,7 +148,7 @@ def list_members(
     ]
 
 
-@router.get("/", response_model=List[ProjectResponse])
+@router.get("", response_model=List[ProjectResponse])
 def list_user_projects(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),

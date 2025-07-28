@@ -259,16 +259,22 @@ def get_locator(
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json",
         }
+        body = {
+            "url": url,
+            "html": html,
+            "user_instruction": description,
+            "conversation_history": conversation_history,
+            "model": model,
+            "model_provider": model_provider,
+        }
+        import json
+
+        logger.debug(f"Sending locator request to {body}")
+        json.dumps(body).encode("utf8")
+        logger.info(f"Sending locator request to {body}")
         response = requests.post(
             endpoint,
-            json={
-                "url": url,
-                "html": html,
-                "user_instruction": description,
-                "conversation_history": conversation_history,
-                "model": model,
-                "model_provider": model_provider,
-            },
+            json=body,
             headers=headers,
         )
         response.raise_for_status()

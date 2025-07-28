@@ -32,7 +32,7 @@ def get_cached_locator(
     if SessionLocal is None:
         return None, None
 
-    html_id = hashlib.sha256(html.encode("utf-8")).hexdigest()
+    html_id = hashlib.sha256(url.encode("utf-8")).hexdigest()
     locator_id = compute_locator_id(instruction, html_id, url, project_id)
     session = SessionLocal()
 
@@ -82,7 +82,8 @@ def save_locator(
     if SessionLocal is None:
         return None
 
-    html_id = hashlib.sha256(html_backbone.encode("utf-8")).hexdigest()
+    # html_id = hashlib.sha256(html_backbone.encode("utf-8")).hexdigest()
+    html_id = hashlib.sha256(url.encode("utf-8")).hexdigest()
     locator_id = compute_locator_id(instruction, html_id, url, project_id)
     session = SessionLocal()
 

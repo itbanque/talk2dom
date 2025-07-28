@@ -90,6 +90,23 @@ def track_api_usage():
             ):
                 raise HTTPException(status_code=402, detail="Not enough credits")
 
+            num_limit = {
+                "free": 1,
+                "developer": 2,
+                "plan": 10,
+                "enterprise": float("inf"),
+            }
+            members = (
+                db.query(ProjectMembership)
+                .filter(ProjectMembership.project_id == project_id)
+                .all()
+            )
+            if len(members) > num_limit.get(project_owner.plan, 0):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Member limit exceeded for your plan. Please upgrade your plan or remove member to continue.",
+                )
+
             start = datetime.utcnow()
             try:
                 response_data = func(*args, **kwargs)
@@ -202,7 +219,6 @@ async def get_current_project_id(
     project_id = request.query_params.get("project_id") or request.headers.get(
         "X-Project-ID"
     )
-
     if not project_id:
         raise HTTPException(status_code=400, detail="Missing project_id")
 
