@@ -28,7 +28,7 @@ app.add_middleware(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://talk2dom-ui-kz5t.vercel.app"],
+    allow_origins=["http://localhost:3000", "https://talk2dom-ui.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
