@@ -1,14 +1,19 @@
-import smtplib
-from email.message import EmailMessage
 import os
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+
+from loguru import logger
 
 def send_verification_email(to_email: str, verify_url: str):
-    msg = EmailMessage()
-    msg["Subject"] = "Verify your email"
-    msg["From"] = os.environ["SMTP_FROM"]
-    msg["To"] = to_email
-    msg.set_content(f"Click the link to verify your email: {verify_url}")
-
-    with smtplib.SMTP_SSL(os.environ["SMTP_HOST"], 465) as smtp:
-        smtp.login(os.environ["SMTP_USER"], os.environ["SMTP_PASS"])
-        smtp.send_message(msg)
+    message = Mail(
+        from_email="noreply@itbanque.com",
+        to_emails=to_email,
+        subject="Welcome to Talk2Dom!",
+        html_content=f"Click the link to verify your email: {verify_url}"
+    )
+    try:
+        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
+        response = sg.send(message)
+        logger.info(f"Email sent to {to_email} with status code: {response.status_code}")
+    except Exception as e:
+        logger.error(f"Email sent to {to_email} with error message: {e}")

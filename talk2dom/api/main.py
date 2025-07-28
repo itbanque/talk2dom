@@ -1,20 +1,21 @@
 import os
-from fastapi import FastAPI
 from talk2dom.db.init import init_db
-from talk2dom.api.routers.auth import google, email
-from talk2dom.api.routers import user, inference, project, subscription, webhook
-
-from starlette.middleware.sessions import SessionMiddleware
-from fastapi.middleware.cors import CORSMiddleware
 from talk2dom.api.limiter import limiter
+from talk2dom.api.routers.auth import google, email
+from talk2dom.api.routers import user, inference, project, subscription, webhook, sentry
+from talk2dom.api.utils.sentry import init_sentry
+
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
-from slowapi.middleware import SlowAPIMiddleware
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+from slowapi.middleware import SlowAPIMiddleware
 from dotenv import load_dotenv
 
-
 load_dotenv()
+init_sentry()
 
 app = FastAPI(title="Talk2DOM API")
 app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SECRET_KEY"))
@@ -52,3 +53,5 @@ app.include_router(
 )
 
 app.include_router(webhook.router, prefix="/api/v1/webhook", tags=["webhook"])
+
+app.include_router(sentry.router, prefix="/api/v1/sentry", tags=["sentry"])
