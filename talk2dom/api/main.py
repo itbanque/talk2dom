@@ -20,6 +20,12 @@ app = FastAPI(title="Talk2DOM API")
 app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SECRET_KEY"))
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ.get("SECRET_KEY"),
+    same_site="none",  # ✅ 支持跨域
+    https_only=True,  # ✅ 必须有，配合 Secure Cookie
+)
+app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "https://talk2dom-ui-kz5t.vercel.app"],
     allow_credentials=True,
