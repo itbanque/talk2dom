@@ -1,17 +1,14 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, status, Response
-from fastapi.responses import RedirectResponse
 
 from sqlalchemy.orm import Session
 from talk2dom.db.models import User
 from talk2dom.api.schemas import RegisterRequest, LoginRequest
-from talk2dom.api.utils import hash_helper, session
+from talk2dom.api.utils import hash_helper
 from talk2dom.api.utils.token import generate_email_token
-from talk2dom.api.utils.email import send_verification_email
 from talk2dom.db.session import get_db  # 自己的 DB session 依赖
 from talk2dom.api.deps import handle_pending_invites
 from loguru import logger
 
-import os
 from datetime import datetime
 
 router = APIRouter(prefix="/email", tags=["auth"])

@@ -14,7 +14,6 @@ def compute_locator_id(
     url: Optional[str] = "",
     project_id: Optional[str] = "",
 ) -> str:
-
     raw = (instruction.strip() + html_id + project_id.strip()).encode("utf-8")
     uuid = hashlib.sha256(raw).hexdigest()
     logger.debug(

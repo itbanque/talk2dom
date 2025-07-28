@@ -11,7 +11,6 @@ from talk2dom.api.limiter import limiter
 from talk2dom.db.models import ProjectInvite, ProjectMembership, Project
 from slowapi.errors import RateLimitExceeded
 from fastapi import Request, HTTPException, Depends
-from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from loguru import logger
@@ -67,7 +66,6 @@ def track_api_usage():
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-
             request = kwargs.get("request")
             db: Session = kwargs.get("db")
             api_key_id = kwargs.get("api_key_id")

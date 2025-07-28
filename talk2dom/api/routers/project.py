@@ -9,7 +9,7 @@ from uuid import UUID
 from talk2dom.db.session import get_db
 from talk2dom.db.models import User
 from talk2dom.db.models import Project, ProjectMembership, ProjectInvite, APIUsage
-from talk2dom.api.deps import get_current_user, get_api_key_user
+from talk2dom.api.deps import get_current_user
 from talk2dom.api.schemas import (
     ProjectCreate,
     ProjectResponse,

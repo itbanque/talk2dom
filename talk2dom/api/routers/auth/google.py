@@ -31,5 +31,5 @@ async def auth_google_callback(request: Request, db: AsyncSession = Depends(get_
         "provider": "google",
     }
     handle_pending_invites(db, user)
-    response = RedirectResponse(url=f"{os.environ.get("UI_DOMAIN")}/projects")
+    response = RedirectResponse(url=f"{os.environ.get('UI_DOMAIN')}/projects")
     return response

@@ -20,7 +20,7 @@ def start_subscription(plan: str, user: User = Depends(get_current_user)):
 
 
 @router.post("/create-one-time")
-def start_subscription(plan: str, user: User = Depends(get_current_user)):
+def start_one_time(plan: str, user: User = Depends(get_current_user)):
     url = create_checkout_session(user.email, plan, mode="payment")
     return {"checkout_url": url}
 
@@ -31,9 +31,9 @@ def subscription_success(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    session = stripe.checkout.Session.retrieve(session_id)
-    customer_email = session.get("customer_email")
-    subscription_id = session.get("subscription")
+    # session = stripe.checkout.Session.retrieve(session_id)
+    # customer_email = session.get("customer_email")
+    # subscription_id = session.get("subscription")
 
     # Optional: update user in DB with new subscription info
     return """

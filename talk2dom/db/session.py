@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session
 import os
 from loguru import logger
 

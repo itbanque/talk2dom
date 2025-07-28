@@ -4,7 +4,6 @@ from fastapi import APIRouter, Request, Header, HTTPException
 from loguru import logger
 from talk2dom.db.models import User
 from talk2dom.db.session import get_db, Session
-from decimal import Decimal, InvalidOperation
 from datetime import datetime
 
 
@@ -21,9 +20,9 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(...)):
         event = stripe.Webhook.construct_event(
             payload, stripe_signature, STRIPE_WEBHOOK_SECRET
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid payload")
-    except stripe.error.SignatureVerificationError as e:
+    except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     db: Session = next(get_db())

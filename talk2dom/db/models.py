@@ -170,7 +170,6 @@ class UILocatorCache(Base):
 
 
 class HTML(Base):
-
     __tablename__ = "html"
 
     id = Column(String, primary_key=True)

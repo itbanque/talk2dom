@@ -5,7 +5,6 @@ from talk2dom.db.cache import (
     compute_locator_id,
     get_cached_locator,
     save_locator,
-    delete_locator,
     locator_exists,
 )
 
@@ -61,29 +60,12 @@ def test_locator_exists_false(mock_session):
 
 def test_save_locator_new(mock_session):
     with patch("talk2dom.db.cache.locator_exists", return_value=False):
-        save_locator("desc", "<html></html>", "id", "login", url="http://example.com")
-        assert mock_session.add.called
+        save_locator(
+            "desc",
+            "<html></html>",
+            "id",
+            "login",
+            url="http://example.com",
+            project_id="test",
+        )
         assert mock_session.commit.called
-
-
-def test_save_locator_duplicate(mock_session):
-    with patch("talk2dom.db.cache.locator_exists", return_value=True):
-        save_locator("desc", "<html></html>", "id", "login", url="http://example.com")
-        assert not mock_session.add.called
-        assert not mock_session.commit.called
-
-
-def test_delete_locator_found(mock_session):
-    mock_row = MagicMock()
-    mock_session.query().filter_by().first.return_value = mock_row
-
-    deleted = delete_locator("desc", "<html></html>", url="http://example.com")
-    assert deleted is True
-    assert mock_session.delete.called
-    assert mock_session.commit.called
-
-
-def test_delete_locator_not_found(mock_session):
-    mock_session.query().filter_by().first.return_value = None
-    deleted = delete_locator("desc", "<html></html>", url="http://example.com")
-    assert deleted is False

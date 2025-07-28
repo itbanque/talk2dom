@@ -6,8 +6,10 @@ SECURITY_SALT = "email-confirmation"
 
 serializer = URLSafeTimedSerializer(SECRET_KEY)
 
+
 def generate_email_token(email: str) -> str:
     return serializer.dumps(email, salt=SECURITY_SALT)
+
 
 def confirm_email_token(token: str, expiration=3600):
     try:
