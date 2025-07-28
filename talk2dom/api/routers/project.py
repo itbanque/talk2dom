@@ -78,7 +78,6 @@ def invite_user_to_project(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-
     members = (
         db.query(ProjectMembership)
         .filter(
@@ -159,7 +158,6 @@ def list_user_projects(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-
     projects = (
         db.query(Project)
         .join(ProjectMembership, Project.id == ProjectMembership.project_id)
