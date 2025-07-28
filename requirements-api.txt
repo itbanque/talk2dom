@@ -5,6 +5,7 @@ annotated-types==0.7.0
 anyio==4.9.0
 attrs==25.3.0
 Authlib==1.6.1
+bcrypt==4.3.0
 beautifulsoup4==4.13.4
 black==25.1.0
 build==1.2.2.post1
@@ -29,6 +30,7 @@ httpx-sse==0.4.0
 idna==3.10
 iniconfig==2.1.0
 itsdangerous==2.2.0
+Jinja2==3.1.6
 jiter==0.9.0
 jsonpatch==1.33
 jsonpointer==3.0.0
@@ -43,6 +45,7 @@ langsmith==0.3.45
 limits==5.4.0
 loguru==0.7.3
 lxml==5.4.0
+MarkupSafe==3.0.2
 marshmallow==3.26.1
 multidict==6.4.3
 mypy-extensions==1.0.0
