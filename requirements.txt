@@ -5,6 +5,7 @@ langchain-core==0.3.71
 langchain-groq==0.3.2
 langchain-ollama==0.3.6
 langchain-openai==0.3.12
+langchain-google-genai==2.1.8
 loguru==0.7.3
 lxml==5.4.0
 openai==1.72.0
