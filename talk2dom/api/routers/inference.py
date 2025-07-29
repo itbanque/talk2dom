@@ -57,8 +57,8 @@ def locate(
         selector = call_selector_llm(
             req.user_instruction,
             cleaned_html,
-            "gpt-4o",
-            "openai",
+            "gemini-2.5-pro",
+            "google_genai",
             req.conversation_history,
         )
         logger.info(f"Location found: {selector}")
