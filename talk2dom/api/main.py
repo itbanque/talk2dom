@@ -23,12 +23,12 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("SECRET_KEY"),
-    same_site="none",  # ✅ 支持跨域
-    https_only=True,  # ✅ 必须有，配合 Secure Cookie
+    same_site="none",
+    https_only=True,
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://talk2dom-ui.vercel.app"],
+    allow_origins=["http://localhost:3000", "https://talk2dom.itbanque.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
