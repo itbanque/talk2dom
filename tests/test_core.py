@@ -4,8 +4,6 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
 from talk2dom.core import (
-    get_element,
-    get_locator,
     validate_element,
     get_computed_styles,
     highlight_element,
@@ -24,37 +22,6 @@ def mock_driver():
     driver.find_element.return_value = element
     driver.current_url = "http://example.com"
     return driver
-
-
-@patch("talk2dom.core.get_locator")
-@patch("talk2dom.core.highlight_element")
-@patch("talk2dom.core.save_locator")
-def test_get_element_success(mock_save, mock_highlight, mock_locator, mock_driver):
-    mock_locator.return_value = ("id", "main")
-    element = get_element(mock_driver, "Find main div")
-    assert element is not None
-    mock_highlight.assert_called_once()
-    mock_save.assert_called_once()
-
-
-@patch("talk2dom.core.get_cached_locator", return_value=("id", "cached"))
-def test_get_locator_cached(mock_cache):
-    mock_element = MagicMock(spec=WebDriver)
-    mock_element.find_element.return_value.get_attribute.return_value = "<html></html>"
-    selector_type, selector_value = get_locator(mock_element, "desc")
-    assert selector_type == "id"
-    assert selector_value == "cached"
-
-
-@patch("talk2dom.core.call_selector_llm")
-@patch("talk2dom.core.get_cached_locator", return_value=(None, None))
-def test_get_locator_llm(mock_cache, mock_llm):
-    mock_element = MagicMock(spec=WebDriver)
-    mock_element.find_element.return_value.get_attribute.return_value = "<html></html>"
-    mock_llm.return_value.selector_type = "id"
-    mock_llm.return_value.selector_value = "foo"
-    result = get_locator(mock_element, "desc")
-    assert result == ("id", "foo")
 
 
 @patch("talk2dom.core.get_element")

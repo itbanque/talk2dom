@@ -1,3 +1,4 @@
+import os
 import time
 from enum import Enum
 
@@ -15,11 +16,8 @@ from pathlib import Path
 
 from loguru import logger
 
-from talk2dom.db.cache import get_cached_locator, save_locator, delete_locator
-from talk2dom.db.init import init_db
 import functools
-
-init_db()
+import requests
 
 
 def retry(
@@ -228,6 +226,10 @@ def get_locator(
     :param conversation_history: The conversation history to use for the LLM.
     :return: The locator type and value.
     """
+    API_URL = os.getenv("TALK2DOM_ENDPOINT")
+    API_KEY = os.getenv("TALK2DOM_API_KEY")
+    PROJECT_ID = os.getenv("TALK2DOM_PROJECT_ID")
+
     html = (
         element.find_element(By.TAG_NAME, "body").get_attribute("outerHTML")
         if isinstance(element, WebDriver)
@@ -243,11 +245,32 @@ def get_locator(
     logger.debug(
         f"Generating locator, instruction: {description}, HTML: {html[0:100]}..."
     )  # Log first 100 chars
+    if API_URL:
+        logger.warning(
+            f"Your are under API mode, sending element location request to {API_URL}"
+        )
+        endpoint = f"{API_URL}/api/v1/inference/locator?project_id={PROJECT_ID}"
+        headers = {
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json",
+        }
+        body = {
+            "url": url,
+            "html": html,
+            "user_instruction": description,
+            "conversation_history": conversation_history,
+            "model": model,
+            "model_provider": model_provider,
+        }
 
-    selector_type, selector_value = get_cached_locator(description, html, url=url)
-    if selector_type and selector_value:
-        logger.info(f"Using cached locator: {selector_type}, value: {selector_value}")
-        return selector_type, selector_value
+        response = requests.post(
+            endpoint,
+            json=body,
+            headers=headers,
+        )
+        response.raise_for_status()
+        response_obj = response.json()
+        return response_obj["selector_type"], response_obj["selector_value"]
 
     selector = call_selector_llm(
         description, html, model, model_provider, conversation_history
@@ -271,7 +294,6 @@ def get_locator(
     return selector.selector_type, selector.selector_value.strip()
 
 
-@retry()
 def get_element(
     driver,
     description,
@@ -314,16 +336,7 @@ def get_element(
         elem = driver.find_element(
             selector_type, selector_value
         )  # Ensure the page is loaded
-        save_locator(
-            description,
-            "",
-            selector_type,
-            selector_value.strip(),
-            url=driver.current_url,
-        )
     except Exception as e:
-        # remove
-        delete_locator(description, "", driver.current_url)
         raise e
 
     highlight_element(driver, elem, duration=duration)

@@ -44,7 +44,7 @@ class ActionChain:
         logger.info(
             f"Find element, description: {description}, element: {self._current_element}"
         )
-        self._conversation_history.append([description, self._current_element])
+        self._conversation_history.append([description, self._current_element.text])
         return self
 
     def valid(self, description):
@@ -70,7 +70,7 @@ class ActionChain:
         """
         self._current_element = self.driver.find_element(by, value)
         highlight_element(self.driver, self._current_element, duration=duration)
-        self._conversation_history.append(["", self._current_element])
+        self._conversation_history.append(["", self._current_element.text])
         return self
 
     def click(self):

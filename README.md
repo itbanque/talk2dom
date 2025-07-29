@@ -43,28 +43,6 @@ Think about it:
 
 ---
 
-## 🗃️ Optional: Enable Locator Caching (PostgreSQL)
-
-To avoid recomputing selectors every time, `talk2dom` can cache results in a PostgreSQL database.
-
-### How it works
-
-* For each `instruction + url` pair, a unique SHA256 hash is generated.
-* If a previous result exists, `talk2dom` reuses it and skips the LLM call.
-* Greatly improves performance and reduces token usage.
-
-### Setup
-
-Set the `TALK2DOM_DB_URI` environment variable:
-
-```bash
-export TALK2DOM_DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
-```
-
-If `TALK2DOM_DB_URI` is not set, caching is automatically disabled, and all requests will use LLM inference in real-time.
-
----
-
 ## 🤔 Why Selenium?
 
 While there are many modern tools for controlling browsers (like Playwright or Puppeteer), **Selenium remains the most robust and cross-platform solution**, especially when dealing with:
@@ -130,17 +108,6 @@ ActionChain(driver) \
 
 You can also use `talk2dom` with free models like `llama-3.3-70b-versatile` from [Groq](https://groq.com/).
 
-
-### Full page vs Scoped element queries
-The `find()` function can be used to query the entire page or a specific element.
-You can pass either a full Selenium `driver` or a specific `WebElement` to scope the locator to part of the page.
-#### Why/When use `WebElement` instead of `driver`?
-
-1. Reduce Token Usage — Passing a smaller HTML subtree (like a modal or container) instead of the full page saves LLM tokens, reducing latency and cost.
-2. Improve Locator Accuracy — Scoping the query helps the LLM focus on relevant content, which is especially helpful for nested or isolated components like popups, drawers, and cards.
-
-You don’t need to extract HTML manually — `talk2dom` will automatically use `outerHTML` from any `WebElement` you pass in.
-
 ---
 
 
@@ -159,6 +126,43 @@ You don’t need to extract HTML manually — `talk2dom` will automatically use 
 - 🧩 Outputs: actionable XPath/CSS selectors or ready-to-run browser steps  
 - 🧪 Built-in assertions and step validations  
 - 💡 Works with both CLI scripts and interactive chat
+
+---
+
+## 🌐 Hosted API Service
+
+While `talk2dom` can be used locally as a lightweight Python package, it also powers a **production-ready hosted service** — making it easy to integrate into your automation agents, testing pipelines, and internal tools.
+
+### Getting Started
+
+```bash
+# Clone the repository
+git clone https://github.com/itbanque/talk2dom.git
+cd talk2dom
+
+# Launch the Langfuse-integrated stack
+docker compose up
+```
+
+The API is available at `http://localhost:8000/docs` with full OpenAPI schema and interactive Swagger UI.
+
+---
+
+## ⚙️ Service Features
+
+The hosted version of `talk2dom` includes a full-featured backend system with:
+
+* 🔐 **User Authentication & Account Management** — including registration, login, and session handling
+* 🧾 **Project Management** — organize different workflows under separate projects
+* 🔑 **API Key Management** — issue and revoke keys per project
+* 💳 **Subscription & Credit System** — users can purchase or subscribe for API usage credits (Stripe supported)
+* 🧠 **Intelligent Selector Caching** — automatic deduplication and re-use of prior LLM results via PostgreSQL
+
+This transforms `talk2dom` from a Python utility into a scalable service with all necessary infrastructure to support production-grade applications.
+
+Deploy on your own cloud or integrate with tools like Zapier, Retool, or internal RPA systems.
+
+For detailed deployment instructions, contact us via GitHub discussions.
 
 ---
 
