@@ -43,28 +43,6 @@
 
 ---
 
-## 🗃️ 可选功能：启用 PostgreSQL 缓存定位器结果
-
-为了避免每次都重新调用 LLM 推理选择器，`talk2dom` 支持通过 PostgreSQL 数据库缓存结果。
-
-### 工作原理
-
-* 对于每一对 `instruction + url` 输入，系统会生成一个唯一的 SHA256 哈希 ID。
-* 如果数据库中已有对应缓存，将直接返回缓存结果，跳过 LLM 调用。
-* 该机制可显著提升性能，降低延迟和 token 成本。
-
-### 配置方式
-
-通过环境变量启用数据库缓存：
-
-```bash
-export TALK2DOM_DB_URI="postgresql+psycopg2://user:password@localhost:5432/dbname"
-```
-
-如果未设置 `TALK2DOM_DB_URI`，缓存功能将自动禁用，所有请求默认使用 LLM 实时推理。
-
----
-
 ## 🤔 为什么选择 Selenium？
 
 虽然 Playwright、Puppeteer 等现代浏览器控制工具层出不穷，**但 Selenium 依然是最健壮、最具跨平台支持的解决方案**，尤其在以下环境中：
@@ -131,19 +109,6 @@ talk2dom 也支持来自 [Groq](https://groq.com/) 的免费模型，如 `llama-
 
 ---
 
-### 整页 vs 范围查询
-`find()` 可用于查询整个页面，也可仅查询指定元素。
-你可以传入完整的 Selenium `driver`，或传入 `WebElement` 限定查询范围。
-
-#### 何时使用 `WebElement` 替代 `driver`
-
-1. 减少 Token 使用 —— 只传较小的 HTML 子树（如弹窗）可节省 Token，降低延迟与成本。
-2. 提升定位准确性 —— 限定范围有助于模型专注于相关内容，尤其适用于嵌套组件如弹窗、抽屉、卡片等。
-
-无需手动提取 HTML —— `talk2dom` 会自动使用你传入的元素的 `outerHTML`。
-
----
-
 ## ✨ 我们的理念
 
 > 我们不控制浏览器。
@@ -159,6 +124,37 @@ talk2dom 也支持来自 [Groq](https://groq.com/) 的免费模型，如 `llama-
 - 🧩 输出可操作的 XPath/CSS 选择器 或 可直接执行的操作链  
 - 🧪 内建断言与步骤校验  
 - 💡 适用于 CLI 脚本或对话交互式应用
+
+## 🌐 托管 API 服务
+
+除了作为本地 Python 包使用外，`talk2dom` 还提供了一个**可直接部署的云服务版本**，适用于构建 AI agent、测试平台及低代码系统。
+
+### 快速启动
+
+```bash
+git clone https://github.com/itbanque/talk2dom.git
+cd talk2dom
+docker compose up
+```
+
+启动后，API 可通过 `http://localhost:8000/docs` 访问，包含完整的 OpenAPI 文档与交互式 Swagger UI。
+
+---
+
+## ⚙️ 服务能力
+
+托管版 `talk2dom` 提供完善的后端基础设施，包括：
+
+- 🔐 **用户认证与账户管理** —— 支持注册、登录、角色控制、会话处理等
+- 🗂️ **项目隔离机制** —— 每个项目独立管理 API Key 与调用分析
+- 🔑 **API Key 管理** —— 支持生成、吊销、轮换，粒度控制访问权限
+- 📈 **调用追踪与分析** —— 实时查看每个项目和用户的 API 调用与统计
+- 💳 **订阅与充值系统** —— 支持基于 Credit 的计费机制，集成 Stripe 支付
+- 🧠 **智能选择器缓存** —— 基于 PostgreSQL 自动缓存 LLM 推理结果，提升响应速度与一致性
+
+可用于私有部署、企业内嵌集成，或连接第三方平台如 Zapier、Retool、低代码平台等。
+
+部署方案或有任何疑问请在Github上联系我们。
 
 ---
 
@@ -180,4 +176,3 @@ Apache 2.0
 欢迎提交 Issue 或开启讨论。  
 如果你正在用 `talk2dom` 构建有趣项目，也欢迎在 GitHub 上 @我们！  
 ⭐️ 如果觉得有帮助，别忘了给我们点个 Star！
-

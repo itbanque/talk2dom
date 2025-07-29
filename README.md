@@ -162,7 +162,7 @@ This transforms `talk2dom` from a Python utility into a scalable service with al
 
 Deploy on your own cloud or integrate with tools like Zapier, Retool, or internal RPA systems.
 
-For detailed deployment instructions, refer to the `/infra` folder in the repo or contact us via GitHub discussions.
+For detailed deployment instructions, contact us via GitHub discussions.
 
 ---
 

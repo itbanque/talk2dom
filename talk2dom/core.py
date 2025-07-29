@@ -16,13 +16,8 @@ from pathlib import Path
 
 from loguru import logger
 
-from talk2dom.db.cache import get_cached_locator, save_locator
-from talk2dom.db.init import init_db
 import functools
 import requests
-
-
-init_db()
 
 
 def retry(
@@ -267,11 +262,7 @@ def get_locator(
             "model": model,
             "model_provider": model_provider,
         }
-        import json
 
-        logger.debug(f"Sending locator request to {body}")
-        json.dumps(body).encode("utf8")
-        logger.info(f"Sending locator request to {body}")
         response = requests.post(
             endpoint,
             json=body,
@@ -280,11 +271,6 @@ def get_locator(
         response.raise_for_status()
         response_obj = response.json()
         return response_obj["selector_type"], response_obj["selector_value"]
-
-    selector_type, selector_value = get_cached_locator(description, html, url=url)
-    if selector_type and selector_value:
-        logger.info(f"Using cached locator: {selector_type}, value: {selector_value}")
-        return selector_type, selector_value
 
     selector = call_selector_llm(
         description, html, model, model_provider, conversation_history
@@ -350,13 +336,6 @@ def get_element(
         elem = driver.find_element(
             selector_type, selector_value
         )  # Ensure the page is loaded
-        save_locator(
-            description,
-            "",
-            selector_type,
-            selector_value.strip(),
-            url=driver.current_url,
-        )
     except Exception as e:
         raise e
 
