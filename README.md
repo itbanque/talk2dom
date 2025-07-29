@@ -140,7 +140,7 @@ While `talk2dom` can be used locally as a lightweight Python package, it also po
 git clone https://github.com/itbanque/talk2dom.git
 cd talk2dom
 
-# Launch the Langfuse-integrated stack
+# Launch the talk2dom-integrated stack
 docker compose up
 ```
 
