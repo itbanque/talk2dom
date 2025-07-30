@@ -28,7 +28,7 @@ app.add_middleware(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://talk2dom.itbanque.com"],
+    allow_origins=[os.environ.get("UI_DOMAIN")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
