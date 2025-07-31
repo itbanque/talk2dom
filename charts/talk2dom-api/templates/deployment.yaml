@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: talk2dom-api
+  labels:
+    app: talk2dom-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: talk2dom-api
+  template:
+    metadata:
+      labels:
+        app: talk2dom-api
+    spec:
+      containers:
+        - name: talk2dom-api
+          image: jianit/talk2dom-api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: talk2dom-env
+          livenessProbe:
+            httpGet:
+              path: /api/v1/status/healthz
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+
+          readinessProbe:
+            httpGet:
+              path: /api/v1/status/healthz
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

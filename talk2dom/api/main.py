@@ -2,7 +2,15 @@ import os
 from talk2dom.db.init import init_db
 from talk2dom.api.limiter import limiter
 from talk2dom.api.routers.auth import google, email
-from talk2dom.api.routers import user, inference, project, subscription, webhook, sentry
+from talk2dom.api.routers import (
+    user,
+    inference,
+    project,
+    subscription,
+    webhook,
+    sentry,
+    status,
+)
 from talk2dom.api.utils.sentry import init_sentry
 
 from slowapi.errors import RateLimitExceeded
@@ -55,3 +63,5 @@ app.include_router(
 app.include_router(webhook.router, prefix="/api/v1/webhook", tags=["webhook"])
 
 app.include_router(sentry.router, prefix="/api/v1/sentry", tags=["sentry"])
+
+app.include_router(status.router, prefix="/api/v1/status", tags=["status"])
