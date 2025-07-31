@@ -88,6 +88,7 @@ This project is licensed under the [Creative Commons Attribution-NonCommercial 4
 You may:
 - ✅ Use, modify, and share the code for personal or research purposes
 - ❌ Not use it in commercial applications without permission
+- ✅ You must give appropriate credit, provide a link to the license, and indicate if changes were made.
 
 📩 For commercial licensing, please contact: contact@itbanque.com
 
