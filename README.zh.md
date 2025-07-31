@@ -3,7 +3,7 @@
 > 📚 [English](./README.md) | [中文](./README.zh.md)
 
 ![Stars](https://img.shields.io/github/stars/itbanque/talk2dom?style=social)
-![License](https://img.shields.io/github/license/itbanque/talk2dom)
+[![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 ![CI](https://github.com/itbanque/talk2dom/actions/workflows/test.yaml/badge.svg)
 
 **talk2dom** 是一个专注于解决浏览器自动化和 UI 测试中最困难问题的工具：
@@ -77,7 +77,14 @@ docker compose up
 
 ## 📄 许可证
 
-Apache 2.0
+本项目采用 Creative Commons Attribution-NonCommercial 4.0 International License（CC BY-NC 4.0） 授权发布。
+
+您可以：
+	•	✅ 出于非商业目的使用、修改和分享本项目代码；
+	•	❌ 禁止将本项目用于任何商业用途，包括但不限于售卖、作为付费产品的一部分或在收费服务中使用；
+	•	✅ 在使用或传播本项目时，必须注明原作者。
+
+如需商业授权，请联系：contact@itbanque.com
 
 ---
 
