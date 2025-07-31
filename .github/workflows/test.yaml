@@ -9,8 +9,6 @@ on:
       - 'CONTRIBUTING.md'
       - '.gitignore'
       - '**/*.md'
-      - 'pyproject.toml'
-      - '**/*.html'
 
 jobs:
   black:
