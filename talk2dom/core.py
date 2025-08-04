@@ -19,6 +19,17 @@ from loguru import logger
 import functools
 import requests
 
+from langfuse import Langfuse
+from langfuse.langchain import CallbackHandler
+
+langfuse = Langfuse(
+    public_key=os.environ.get("LANGFUSE_PUBLIC_KEY"),
+    secret_key=os.environ.get("LANGFUSE_SECRET_KEY"),
+    host=os.environ.get("LANGFUSE_HOST"),
+)
+
+langfuse_handler = CallbackHandler()
+
 
 def retry(
     exceptions: tuple = (Exception,),
@@ -98,7 +109,12 @@ class Validator(BaseModel):
 
 
 def call_selector_llm(
-    user_instruction, html, model, model_provider, conversation_history=None
+    user_instruction,
+    html,
+    model,
+    model_provider,
+    conversation_history=None,
+    metadata={},
 ) -> Selector:
     logger.warning("Calling LLM for selector generation...")
     llm = init_chat_model(model, model_provider=model_provider)
@@ -112,7 +128,9 @@ def call_selector_llm(
     query += f"\n\n## HTML: \n{html}\n\nUser: {user_instruction}\n\nAssistant:"
     logger.debug(f"Query for LLM: {query[0:100]}")
     try:
-        response = chain.invoke(query)[0]
+        response = chain.invoke(
+            query, config={"callbacks": [langfuse_handler], "metadata": metadata}
+        )[0]
         return response
     except Exception as e:
         logger.error(f"Query failed: {e}")
