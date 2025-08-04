@@ -23,7 +23,7 @@ router = APIRouter()
 member_limit = {
     "free": 1,
     "developer": 2,
-    "plan": 10,
+    "pro": 10,
     "enterprise": float("inf"),
 }
 
@@ -37,7 +37,7 @@ def create_project(
     num_limit = {
         "free": 2,
         "developer": 10,
-        "plan": float("inf"),
+        "pro": float("inf"),
         "enterprise": float("inf"),
     }
     projects = (

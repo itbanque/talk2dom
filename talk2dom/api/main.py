@@ -10,6 +10,7 @@ from talk2dom.api.routers import (
     webhook,
     sentry,
     status,
+    stripe,
 )
 from talk2dom.api.utils.sentry import init_sentry
 
@@ -65,3 +66,5 @@ app.include_router(webhook.router, prefix="/api/v1/webhook", tags=["webhook"])
 app.include_router(sentry.router, prefix="/api/v1/sentry", tags=["sentry"])
 
 app.include_router(status.router, prefix="/api/v1/status", tags=["status"])
+
+app.include_router(stripe.router, prefix="/api/v1/payment", tags=["stripe"])
