@@ -55,7 +55,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(...)):
         subscription_details = invoice["subscription_details"]
         email = subscription_details["metadata"]["email"]
         plan = subscription_details["metadata"]["plan"]
-        user_id = subscription_details["metadata"]["user_id"]
+        # user_id = subscription_details["metadata"]["user_id"]
         customer_id = invoice["customer"]
 
         user = db.query(User).filter(User.email == email).first()
