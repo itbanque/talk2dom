@@ -91,7 +91,7 @@ def track_api_usage():
             num_limit = {
                 "free": 1,
                 "developer": 2,
-                "plan": 10,
+                "pro": 10,
                 "enterprise": float("inf"),
             }
             members = (
@@ -193,7 +193,7 @@ def handle_pending_invites(db: Session, user: User):
         num_limit = {
             "free": 1,
             "developer": 2,
-            "plan": 10,
+            "pro": 10,
             "enterprise": float("inf"),
         }
         members = (

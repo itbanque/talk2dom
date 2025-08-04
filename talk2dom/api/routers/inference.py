@@ -60,6 +60,11 @@ def locate(
             "gemini-2.5-pro",
             "google_genai",
             req.conversation_history,
+            metadata={
+                "user_id": user.id,
+                "project_id": project_id,
+                "email": user.email,
+            },
         )
         logger.info(f"Location found: {selector}")
         request.state.call_llm = True
