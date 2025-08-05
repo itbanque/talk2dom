@@ -63,7 +63,6 @@ def login_user(
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
     user.last_login = datetime.utcnow()
-    db.commit()
 
     request.session["user"] = {
         "id": str(user.id),

@@ -1,23 +1,17 @@
 import os
 import time
+import functools
+from pathlib import Path
+
 from enum import Enum
-
 from pydantic import BaseModel, Field
-
-from bs4 import BeautifulSoup
 
 from langchain.chat_models import init_chat_model
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
 
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.common.by import By
-
-from pathlib import Path
+from playwright.sync_api import sync_playwright
 
 from loguru import logger
-
-import functools
-import requests
 
 from langfuse import Langfuse
 from langfuse.langchain import CallbackHandler
@@ -208,193 +202,18 @@ def get_computed_styles(driver, element, properties=None):
         return driver.execute_script(script, element)
 
 
-def get_html(element):
-    html = (
-        element.find_element(By.TAG_NAME, "body").get_attribute("outerHTML")
-        if isinstance(element, WebDriver)
-        else element.get_attribute("outerHTML")
-    )
-    soup = BeautifulSoup(html, "lxml")
-
-    # remove unnecessary tags
-    for tag in soup(["script", "style", "meta", "link"]):
-        tag.decompose()
-
-    html = soup.prettify()
-    return html
+def get_page_content(url: str, view="desktop"):
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        if view == "mobile":
+            page.set_viewport_size({"width": 375, "height": 812})
+        else:
+            page.set_viewport_size({"width": 1280, "height": 720})
+        page.goto(url)
+        content = page.content()
+        browser.close()
+    return content
 
 
 # ------------------ Public API ------------------
-
-
-def get_locator(
-    element,
-    description,
-    model="gpt-4o-mini",
-    model_provider="openai",
-    conversation_history=None,
-    url=None,
-):
-    """
-    Get the locator for the element using LLM.
-    :param element: The element to locate.
-    :param description: The description of the element.
-    :param model: The model to use for the LLM.
-    :param model_provider: The model provider to use for the LLM.
-    :param conversation_history: The conversation history to use for the LLM.
-    :return: The locator type and value.
-    """
-    API_URL = os.getenv("TALK2DOM_ENDPOINT")
-    API_KEY = os.getenv("TALK2DOM_API_KEY")
-    PROJECT_ID = os.getenv("TALK2DOM_PROJECT_ID")
-
-    html = (
-        element.find_element(By.TAG_NAME, "body").get_attribute("outerHTML")
-        if isinstance(element, WebDriver)
-        else element.get_attribute("outerHTML")
-    )
-    soup = BeautifulSoup(html, "lxml")
-
-    # remove unnecessary tags
-    for tag in soup(["script", "style", "meta", "link"]):
-        tag.decompose()
-
-    html = soup.prettify()
-    logger.debug(
-        f"Generating locator, instruction: {description}, HTML: {html[0:100]}..."
-    )  # Log first 100 chars
-    if API_URL:
-        logger.warning(
-            f"Your are under API mode, sending element location request to {API_URL}"
-        )
-        endpoint = f"{API_URL}/api/v1/inference/locator?project_id={PROJECT_ID}"
-        headers = {
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json",
-        }
-        body = {
-            "url": url,
-            "html": html,
-            "user_instruction": description,
-            "conversation_history": conversation_history,
-            "model": model,
-            "model_provider": model_provider,
-        }
-
-        response = requests.post(
-            endpoint,
-            json=body,
-            headers=headers,
-        )
-        response.raise_for_status()
-        response_obj = response.json()
-        return response_obj["selector_type"], response_obj["selector_value"]
-
-    selector = call_selector_llm(
-        description, html, model, model_provider, conversation_history
-    )
-    if selector is None:
-        raise Exception(f"Could not find locator: {description}")
-
-    if selector.selector_type not in [
-        "id",
-        "tag name",
-        "name",
-        "class name",
-        "xpath",
-        "css selector",
-    ]:
-        raise ValueError(f"Unsupported selector type: {selector.selector_type}")
-
-    logger.info(
-        f"Located by: {selector.selector_type}, selector: {selector.selector_value.strip()}"
-    )
-    return selector.selector_type, selector.selector_value.strip()
-
-
-def get_element(
-    driver,
-    description,
-    element=None,
-    model="gpt-4o-mini",
-    model_provider="openai",
-    duration=None,
-    conversation_history=None,
-):
-    """
-    Get the element using LLM.
-    :param driver: The WebDriver instance.
-    :param description: The description of the element.
-    :param element: The element to locate.
-    :param model: The model to use for the LLM.
-    :param model_provider: The model provider to use for the LLM.
-    :param duration: The duration to highlight the element.
-    :param conversation_history: The conversation history to use for the LLM.
-    :return: The located element.
-    """
-    if element is None:
-        selector_type, selector_value = get_locator(
-            driver,
-            description,
-            model,
-            model_provider,
-            conversation_history,
-            url=driver.current_url,
-        )
-    else:
-        selector_type, selector_value = get_locator(
-            element,
-            description,
-            model,
-            model_provider,
-            conversation_history,
-            url=driver.current_url,
-        )
-    try:
-        elem = driver.find_element(
-            selector_type, selector_value
-        )  # Ensure the page is loaded
-    except Exception as e:
-        raise e
-
-    highlight_element(driver, elem, duration=duration)
-
-    return elem
-
-
-def validate_element(
-    driver,
-    description,
-    element=None,
-    model="gpt-4o-mini",
-    model_provider="openai",
-    duration=None,
-    conversation_history=None,
-):
-    try:
-        ele = get_element(
-            driver,
-            description,
-            element=element,
-            model=model,
-            model_provider=model_provider,
-            duration=duration,
-            conversation_history=conversation_history,
-        )
-        css_style = get_computed_styles(driver, ele)
-    except Exception as e:
-        logger.error(f"Failed to get element: {description}, error: {e}")
-        css_style = {}
-
-    html = get_html(driver)
-    validator = call_validator_llm(
-        description,
-        html,
-        css_style,
-        model,
-        model_provider,
-        conversation_history,
-    )
-    if validator is None:
-        raise Exception(f"Could not find validator: {description}")
-    return validator

@@ -71,6 +71,8 @@ class User(Base):
         email = user_info["email"]
         existing_user = db.query(cls).filter_by(email=email).first()
         if existing_user:
+            existing_user.last_login = datetime.utcnow()
+            db.commit()
             return existing_user
 
         new_user = cls(
@@ -80,6 +82,7 @@ class User(Base):
             picture=user_info.get("picture"),
             provider="google",
             is_active=True,
+            last_login=datetime.utcnow(),
         )
         db.add(new_user)
         db.commit()

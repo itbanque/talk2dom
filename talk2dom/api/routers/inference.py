@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 
-from talk2dom.core import call_selector_llm, retry
+from talk2dom.core import call_selector_llm, retry, get_page_content
 from talk2dom.db.cache import get_cached_locator, save_locator
 from talk2dom.db.session import Session, get_db
 from talk2dom.api.schemas import LocatorRequest, LocatorResponse
@@ -32,9 +32,13 @@ def locate(
     api_key_id: str = Depends(get_api_key_id),
     project_id: str = Depends(get_current_project_id),
 ):
+    if not req.html:
+        html = get_page_content(req.url, req.view)
+    else:
+        html = req.html
     try:
-        structure_html = clean_html_keep_structure_only(req.html)
-        cleaned_html = clean_html(req.html)
+        structure_html = clean_html_keep_structure_only(html)
+        cleaned_html = clean_html(html)
         verifier = SelectorValidator(cleaned_html)
     except Exception as err:
         logger.error(f"Failed to clean html: {err}")

@@ -1,13 +1,20 @@
+from enum import Enum
 from pydantic import BaseModel, UUID4, EmailStr
 from typing import Optional, List
 from datetime import datetime
 
 
+class ViewMode(str, Enum):
+    mobile = "mobile"
+    desktop = "desktop"
+
+
 class LocatorRequest(BaseModel):
     url: str
-    html: str
+    html: Optional[str] = None
     user_instruction: str
     conversation_history: Optional[List[List[str]]] = None
+    view: Optional[ViewMode] = ViewMode.desktop
     # model: Optional[str] = "gpt-4o"
     # model_provider: Optional[str] = "openai"
 
