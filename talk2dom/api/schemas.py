@@ -22,6 +22,7 @@ class LocatorRequest(BaseModel):
 class LocatorResponse(BaseModel):
     selector_type: str
     selector_value: str
+    page_html: Optional[str] = None
 
 
 class ProjectCreate(BaseModel):

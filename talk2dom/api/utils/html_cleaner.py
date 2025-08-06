@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup, Comment
+from urllib.parse import urljoin
 
 
 def clean_html_keep_structure_only(raw_html: str) -> str:
@@ -55,3 +56,22 @@ def clean_html(raw_html: str) -> str:
 
     cleaned = str(soup.body).replace("\n", "").replace("\r", "").replace("\t", "")
     return cleaned.strip()
+
+
+def convert_relative_paths_to_absolute(html: str, base_url: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+
+    for tag in soup.find_all("link", href=True):
+        tag["href"] = urljoin(base_url, tag["href"])
+
+    for tag in soup.find_all("script", src=True):
+        tag["src"] = urljoin(base_url, tag["src"])
+
+    for tag in soup.find_all("img", src=True):
+        tag["src"] = urljoin(base_url, tag["src"])
+
+    for tag in soup.find_all("a", href=True):
+        if tag["href"].startswith("/"):
+            tag["href"] = urljoin(base_url, tag["href"])
+
+    return str(soup)

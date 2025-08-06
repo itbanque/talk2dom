@@ -150,6 +150,62 @@ def track_api_usage():
     return decorator
 
 
+def playground_track_api_usage():
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            db: Session = kwargs.get("db")
+            request = kwargs.get("request")
+            user = kwargs.get("user")
+
+            if (int(user.subscription_credits) + int(user.one_time_credits)) <= 0:
+                raise HTTPException(status_code=403, detail="Not enough credits")
+
+            start = datetime.utcnow()
+            try:
+                response_data = func(*args, **kwargs)
+                status_code = 200
+            except Exception as e:
+                response_data = {"error": str(e)}
+                status_code = 500
+
+            end = datetime.utcnow()
+            duration_ms = int((end - start).total_seconds() * 1000)
+
+            input_tokens = getattr(request.state, "input_tokens", None)
+            output_tokens = getattr(request.state, "output_tokens", None)
+            metadata = getattr(request.state, "usage_metadata", {})
+
+            usage = APIUsage(
+                api_key_id=None,
+                user_id=user.id,
+                project_id=None,
+                endpoint=str(request.url.path),
+                request_time=start,
+                response_time=end,
+                duration_ms=duration_ms,
+                status_code=status_code,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                meta_data=metadata,
+                call_llm=getattr(request.state, "call_llm", False),
+            )
+            db.add(usage)
+
+            if status_code == 200:
+                consume_credit(db, user, amount=1)
+
+            db.commit()
+
+            if status_code == 500:
+                return HTTPException(detail=response_data, status_code=500)
+            return response_data
+
+        return wrapper
+
+    return decorator
+
+
 def rate_limiter_by_user(plan_rates: dict = None):
     if plan_rates is None:
         plan_rates = {
