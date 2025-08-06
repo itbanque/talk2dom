@@ -20,13 +20,6 @@
 
 ## Use the provided function schema to return the selector.
 
-Only respond with a structured function call — never explain, repeat, or add commentary.
+1. Only respond with a structured function call — never explain, repeat, or add commentary.
 
-✅ If the element is inside a Shadow DOM, return the **CSS selector that works inside the shadow root only**.
-❌ Do not mention Shadow DOM.
-
-If no appropriate element exists, return `selector_type = "none"` and `selector_value = ""`.
-
-## Rules
-- If user's instruction includes 1th, 2nd .etc to indentify the element order, need to specify the index in the selector_value
-- When locate the card view, list view, you need to locate the element as top as you can. Locate the ui/li instead of the element inside li
+2. If no appropriate element exists, return `selector_type = ""` and `selector_value = ""`.
