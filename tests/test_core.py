@@ -1,10 +1,8 @@
-import pytest
 from unittest.mock import MagicMock, patch
 
 
 from talk2dom.core import (
     call_selector_llm,
-    call_validator_llm,
 )
 
 

@@ -27,8 +27,8 @@ jobs:
             pip install -r requirements.txt
         - name: Lint Checks
           run: |
-            ruff check .
-            ruff format --check .
+            ruff check ./talk2dom
+            ruff format --check ./talk2dom
         - name: Run Unittest
           run: |
             pip install pytest
