@@ -64,7 +64,7 @@ def run_migrations_online() -> None:
     """
     from sqlalchemy import create_engine
 
-    url = os.environ["DATABASE_URL"]
+    url = os.environ["TALK2DOM_DB_URI"]
     connectable = create_engine(url, poolclass=pool.NullPool)
 
     with connectable.connect() as connection:
