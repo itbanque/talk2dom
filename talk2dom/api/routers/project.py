@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Date
 
@@ -133,6 +133,8 @@ def list_members(
     project_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    limit: int = Query(default=10, ge=1),
+    offset: int = Query(default=0, ge=0),
 ):
     project = db.query(Project).filter_by(id=project_id).first()
     if not project:
@@ -152,6 +154,8 @@ def list_members(
         db.query(ProjectMembership, User)
         .join(User, ProjectMembership.user_id == User.id)
         .filter(ProjectMembership.project_id == project_id)
+        .limit(limit)
+        .offset(offset)
         .all()
     )
     return [
@@ -163,11 +167,15 @@ def list_members(
 def list_user_projects(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
+    limit: int = Query(default=10, ge=1),
+    offset: int = Query(default=0, ge=0),
 ):
     projects = (
         db.query(Project)
         .join(ProjectMembership, Project.id == ProjectMembership.project_id)
         .filter(ProjectMembership.user_id == user.id)
+        .limit(limit)
+        .offset(offset)
         .all()
     )
 
@@ -268,6 +276,8 @@ def list_project_invites(
     project_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    limit: int = Query(default=10, ge=1),
+    offset: int = Query(default=0, ge=0),
 ):
     project = db.query(Project).filter_by(id=project_id).first()
     if not project:
@@ -283,7 +293,13 @@ def list_project_invites(
             status_code=403, detail="You are not a member of this project"
         )
 
-    invites = db.query(ProjectInvite).filter_by(project_id=project_id).all()
+    invites = (
+        db.query(ProjectInvite)
+        .filter_by(project_id=project_id)
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
     return [
         InviteResponse(
             id=invite.id,
@@ -305,12 +321,10 @@ def remove_project_invite_by_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # 检查项目是否存在
     project = db.query(Project).filter_by(id=project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # 权限检查：仅 owner 可以删除邀请
     membership = (
         db.query(ProjectMembership)
         .filter_by(user_id=current_user.id, project_id=project_id)
@@ -319,7 +333,6 @@ def remove_project_invite_by_user(
     if not membership or membership.role != "owner":
         raise HTTPException(status_code=403, detail="Only owner can remove invites")
 
-    # 查找 invite
     invite = (
         db.query(ProjectInvite).filter_by(project_id=project_id, id=user_id).first()
     )
@@ -337,7 +350,6 @@ def get_api_usage(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # 校验项目访问权限
     project_member = (
         db.query(ProjectMembership)
         .filter_by(project_id=project_id, user_id=current_user.id)
@@ -371,6 +383,8 @@ def list_locator_cache(
     project_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    limit: int = Query(default=10, ge=1),
+    offset: int = Query(default=0, ge=0),
 ):
     project_member = (
         db.query(ProjectMembership)
@@ -380,7 +394,13 @@ def list_locator_cache(
     if not project_member:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    locator_caches = db.query(UILocatorCache).filter_by(project_id=project_id).all()
+    locator_caches = (
+        db.query(UILocatorCache)
+        .filter_by(project_id=project_id)
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
     return [
         {"id": cache.id, "url": cache.url, "user_instruction": cache.user_instruction}
         for cache in locator_caches

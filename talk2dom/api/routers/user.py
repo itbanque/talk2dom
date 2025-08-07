@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, Body, HTTPException
+from fastapi import APIRouter, Depends, Request, Body, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -40,6 +40,11 @@ def create_api_key(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    keys = db.query(APIKey).filter(APIKey.user_id == current_user.id).all()
+    if len(keys) >= 20:
+        raise HTTPException(
+            status_code=400, detail="Too many keys, please contact our support"
+        )
     key_value = secrets.token_hex(32)
     api_key = APIKey(user_id=current_user.id, key=key_value, name=name)
     db.add(api_key)
@@ -57,8 +62,17 @@ def create_api_key(
 def list_api_keys(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ):
-    keys = db.query(APIKey).filter(APIKey.user_id == current_user.id).all()
+    keys = (
+        db.query(APIKey)
+        .filter(APIKey.user_id == current_user.id)
+        .order_by(APIKey.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
     return [
         {
             "id": k.id,
