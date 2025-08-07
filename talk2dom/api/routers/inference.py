@@ -38,10 +38,9 @@ def locate(
     api_key_id: str = Depends(get_api_key_id),
     project_id: str = Depends(get_current_project_id),
 ):
-    if not req.html:
-        html = get_page_content(req.url, req.view)
-    else:
-        html = req.html
+    html = req.html
+    if not html:
+        raise HTTPException(status_code=404, detail="html not found")
     try:
         structure_html = clean_html_keep_structure_only(html)
         cleaned_html = clean_html(html)

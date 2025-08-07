@@ -8,7 +8,13 @@ from datetime import datetime, timedelta
 from uuid import UUID
 from talk2dom.db.session import get_db
 from talk2dom.db.models import User
-from talk2dom.db.models import Project, ProjectMembership, ProjectInvite, APIUsage
+from talk2dom.db.models import (
+    Project,
+    ProjectMembership,
+    ProjectInvite,
+    APIUsage,
+    UILocatorCache,
+)
 from talk2dom.api.deps import get_current_user
 from talk2dom.api.schemas import (
     ProjectCreate,
@@ -358,3 +364,77 @@ def get_api_usage(
     )
 
     return [{"timestamp": str(row.date), "count": row.count} for row in results]
+
+
+@router.get("/{project_id}/locator-cache")
+def list_locator_cache(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    project_member = (
+        db.query(ProjectMembership)
+        .filter_by(project_id=project_id, user_id=current_user.id)
+        .first()
+    )
+    if not project_member:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    locator_caches = db.query(UILocatorCache).filter_by(project_id=project_id).all()
+    return [
+        {"id": cache.id, "url": cache.url, "user_instruction": cache.user_instruction}
+        for cache in locator_caches
+    ]
+
+
+@router.get("/{project_id}/locator-cache/{cache_id}")
+def get_locator_cache(
+    project_id: UUID,
+    cache_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    project_member = (
+        db.query(ProjectMembership)
+        .filter_by(project_id=project_id, user_id=current_user.id)
+        .first()
+    )
+    if not project_member:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    locator_cache = (
+        db.query(UILocatorCache)
+        .filter_by(project_id=project_id, id=cache_id)
+        .join(UILocatorCache.html)
+        .first()
+    )
+    return {
+        "html": locator_cache.html.row_html,
+        "selector_type": locator_cache.selector_type,
+        "selector_value": locator_cache.selector_value,
+    }
+
+
+@router.delete("/{project_id}/locator-cache/{cache_id}")
+def delete_locator_cache(
+    project_id: UUID,
+    cache_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    project_member = (
+        db.query(ProjectMembership)
+        .filter_by(project_id=project_id, user_id=current_user.id)
+        .first()
+    )
+    if not project_member:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    locator_cache = (
+        db.query(UILocatorCache).filter_by(project_id=project_id, id=cache_id).first()
+    )
+    db.delete(locator_cache)
+    db.commit()
+    return {
+        "status": "success",
+    }
