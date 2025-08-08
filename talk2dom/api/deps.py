@@ -16,6 +16,14 @@ from uuid import UUID
 from loguru import logger
 
 
+num_limit = {
+    "free": 1,
+    "developer": 2,
+    "pro": 10,
+    "enterprise": float("inf"),
+}
+
+
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = request.session.get("user")
     if not user:
@@ -245,20 +253,20 @@ def rate_limiter_by_user(plan_rates: dict = None):
 
 def handle_pending_invites(db: Session, user: User):
     invites = db.query(ProjectInvite).filter_by(email=user.email, accepted=False).all()
+    logger.info(f"Found {len(invites)} invites for user {user.email}")
     for invite in invites:
-        num_limit = {
-            "free": 1,
-            "developer": 2,
-            "pro": 10,
-            "enterprise": float("inf"),
-        }
         members = (
             db.query(Project)
             .join(ProjectMembership, Project.id == invite.project_id)
             .filter(ProjectMembership.user_id == invite.invited_by_user_id)
             .all()
         )
-        if len(members) >= num_limit.get(user.plan, 0):
+        owner = db.query(User).filter(User.id == invite.invited_by_user_id).first()
+
+        if len(members) >= num_limit.get(owner.plan, 0):
+            logger.warning(
+                f"The members of project: {invite.project_id} is already over the limit."
+            )
             continue
         db.add(ProjectMembership(user_id=user.id, project_id=invite.project_id))
         invite.accepted = True
