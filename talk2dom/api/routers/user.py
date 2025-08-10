@@ -73,7 +73,9 @@ def list_api_keys(
         .offset(offset)
         .all()
     )
-    return [
+    total_count = db.query(APIKey).filter(APIKey.user_id == current_user.id).count()
+    has_next = (offset + limit) < total_count
+    items = [
         {
             "id": k.id,
             "name": k.name,
@@ -83,6 +85,10 @@ def list_api_keys(
         }
         for k in keys
     ]
+    return {
+        "items": items,
+        "has_next": has_next,
+    }
 
 
 @router.delete("/api-keys/{key_id}")

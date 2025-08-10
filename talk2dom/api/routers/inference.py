@@ -77,6 +77,8 @@ def locate(
         )
         logger.info(f"Location found: {selector}")
         request.state.call_llm = True
+        if selector is None:
+            raise HTTPException(status_code=404, detail="locator not found")
         selector_type, selector_value = selector.selector_type, selector.selector_value
         request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
         request.state.output_tokens = len(selector_type) + len(selector_value)

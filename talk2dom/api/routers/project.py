@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Date
 
-from typing import List
 from datetime import datetime, timedelta
 
 from uuid import UUID
@@ -23,6 +22,8 @@ from talk2dom.api.schemas import (
     MemberResponse,
     InviteResponse,
 )
+
+from loguru import logger
 
 router = APIRouter()
 
@@ -128,7 +129,7 @@ def invite_user_to_project(
     return {"detail": "Invitation sent."}
 
 
-@router.get("/{project_id}/members", response_model=list[MemberResponse])
+@router.get("/{project_id}/members")
 def list_members(
     project_id: UUID,
     db: Session = Depends(get_db),
@@ -158,12 +159,19 @@ def list_members(
         .offset(offset)
         .all()
     )
-    return [
+    total_count = (
+        db.query(func.count(ProjectMembership.id))
+        .filter(ProjectMembership.project_id == project_id)
+        .scalar()
+    )
+    has_next = (offset + limit) < total_count
+    items = [
         MemberResponse(user_id=u.id, email=u.email, role=m.role) for m, u in members
     ]
+    return {"items": items, "has_next": has_next}
 
 
-@router.get("", response_model=List[ProjectResponse])
+@router.get("")
 def list_user_projects(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
@@ -179,6 +187,15 @@ def list_user_projects(
         .all()
     )
 
+    total_count = (
+        db.query(func.count(Project.id))
+        .join(ProjectMembership, Project.id == ProjectMembership.project_id)
+        .filter(ProjectMembership.user_id == user.id)
+        .scalar()
+    )
+    has_next = (offset + limit) < total_count
+
+    items = []
     for project in projects:
         member_count = (
             db.query(ProjectMembership)
@@ -187,7 +204,10 @@ def list_user_projects(
         )
         api_calls = (
             db.query(func.count(APIUsage.id))
-            .filter(APIUsage.project_id == project.id)
+            .filter(
+                APIUsage.project_id == project.id,
+                APIUsage.status_code == 200,
+            )
             .scalar()
         )
         owner = db.query(User).filter_by(id=project.owner_id).first()
@@ -198,8 +218,9 @@ def list_user_projects(
             setattr(project, "is_active", True)
         setattr(project, "member_count", member_count)
         setattr(project, "api_calls", api_calls)
+        items.append(project)
 
-    return projects
+    return {"items": items, "has_next": has_next}
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -271,7 +292,7 @@ def remove_member(
     return
 
 
-@router.get("/{project_id}/invites", response_model=List[InviteResponse])
+@router.get("/{project_id}/invites")
 def list_project_invites(
     project_id: UUID,
     db: Session = Depends(get_db),
@@ -300,7 +321,13 @@ def list_project_invites(
         .offset(offset)
         .all()
     )
-    return [
+    total_count = (
+        db.query(func.count(ProjectInvite.id))
+        .filter(ProjectInvite.project_id == project_id)
+        .scalar()
+    )
+    has_next = (offset + limit) < total_count
+    items = [
         InviteResponse(
             id=invite.id,
             email=invite.email,
@@ -310,6 +337,7 @@ def list_project_invites(
         )
         for invite in invites
     ]
+    return {"items": items, "has_next": has_next}
 
 
 @router.delete(
@@ -374,6 +402,7 @@ def get_api_usage(
         .order_by(cast(APIUsage.request_time, Date))
         .all()
     )
+    logger.info(f"API usage for project {results}")
 
     return [{"timestamp": str(row.date), "count": row.count} for row in results]
 
@@ -401,10 +430,21 @@ def list_locator_cache(
         .offset(offset)
         .all()
     )
-    return [
+    # Get total count for pagination
+    total_count = (
+        db.query(func.count(UILocatorCache.id))
+        .filter_by(project_id=project_id)
+        .scalar()
+    )
+    has_next = (offset + limit) < total_count
+    items = [
         {"id": cache.id, "url": cache.url, "user_instruction": cache.user_instruction}
         for cache in locator_caches
     ]
+    return {
+        "items": items,
+        "has_next": has_next,
+    }
 
 
 @router.get("/{project_id}/locator-cache/{cache_id}")
