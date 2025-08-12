@@ -12,7 +12,7 @@ from loguru import logger
 
 from datetime import datetime
 
-router = APIRouter(prefix="/email", tags=["auth"])
+router = APIRouter(prefix="/email")
 
 
 @router.post("/register")
