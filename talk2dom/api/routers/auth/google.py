@@ -8,7 +8,7 @@ from talk2dom.db.models import User
 from talk2dom.api.auth.google_oauth import oauth
 from talk2dom.api.deps import handle_pending_invites
 
-router = APIRouter(prefix="/google", tags=["auth"])
+router = APIRouter(prefix="/google")
 
 
 @router.get("/login")

@@ -1,7 +1,7 @@
 import os
 from talk2dom.db.init import init_db
 from talk2dom.api.limiter import limiter
-from talk2dom.api.routers.auth import google, email
+from talk2dom.api.routers.auth import google, email, github
 from talk2dom.api.routers import (
     user,
     inference,
@@ -48,9 +48,11 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 init_db()
 
-app.include_router(google.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(google.router, prefix="/api/v1/auth", tags=["google-auth"])
 
-app.include_router(email.router, prefix="/api/v1/auth", tags=["user"])
+app.include_router(email.router, prefix="/api/v1/auth", tags=["email-auth"])
+
+app.include_router(github.router, prefix="/api/v1/auth", tags=["github-auth"])
 
 app.include_router(user.router, prefix="/api/v1/user", tags=["user"])
 app.include_router(inference.router, prefix="/api/v1/inference", tags=["inference"])

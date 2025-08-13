@@ -10,6 +10,8 @@ from sqlalchemy import (
     DateTime,
     Boolean,
 )
+from typing import Optional
+
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
@@ -72,6 +74,10 @@ class User(Base):
         existing_user = db.query(cls).filter_by(email=email).first()
         if existing_user:
             existing_user.last_login = datetime.utcnow()
+            existing_user.name = user_info["name"]
+            existing_user.picture = user_info.get("picture")
+            existing_user.provider = "google"
+            existing_user.provider_user_id = user_info["sub"]
             db.commit()
             return existing_user
 
@@ -81,6 +87,73 @@ class User(Base):
             name=user_info.get("name"),
             picture=user_info.get("picture"),
             provider="google",
+            is_active=True,
+            last_login=datetime.utcnow(),
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+
+    @classmethod
+    async def get_or_create_github_user(
+        cls,
+        db: Session,
+        user_info: dict,
+        email: Optional[str] = None,
+    ):
+        """
+        user_info: JSON from https://api.github.com/user：
+          {
+            "id": 123456,
+            "login": "octocat",
+            "name": "The Octocat",
+            "avatar_url": "https://avatars.githubusercontent.com/u/...",
+            ...
+          }
+        """
+        provider_user_id = str(user_info.get("id"))
+        login = user_info.get("login")
+        name = user_info.get("name") or login
+        picture = user_info.get("avatar_url")
+
+        email = email or user_info.get("email")
+        if not email:
+            raise ValueError(
+                "GitHub email is required. Call /user/emails to fetch a primary & verified email and pass it in."
+            )
+
+        user = db.query(cls).filter_by(email=email).first()
+        if user:
+            user.last_login = datetime.utcnow()
+            user.name = name
+            user.picture = picture
+            user.provider = "github"
+            user.provider_user_id = provider_user_id
+            db.commit()
+            db.refresh(user)
+            return user
+
+        existing_by_provider = (
+            db.query(cls)
+            .filter_by(provider="github", provider_user_id=provider_user_id)
+            .first()
+        )
+        if existing_by_provider:
+            existing_by_provider.email = email
+            existing_by_provider.last_login = datetime.utcnow()
+            existing_by_provider.name = name or existing_by_provider.name
+            existing_by_provider.picture = picture or existing_by_provider.picture
+            db.commit()
+            db.refresh(existing_by_provider)
+            return existing_by_provider
+
+        new_user = cls(
+            email=email,
+            provider_user_id=provider_user_id,
+            name=name,
+            picture=picture,
+            provider="github",
             is_active=True,
             last_login=datetime.utcnow(),
         )
