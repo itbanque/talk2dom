@@ -21,6 +21,7 @@ from talk2dom.api.schemas import (
     InviteRequest,
     MemberResponse,
     InviteResponse,
+    ProjectUpdateRequest,
 )
 
 from loguru import logger
@@ -221,6 +222,32 @@ def list_user_projects(
         items.append(project)
 
     return {"items": items, "has_next": has_next}
+
+
+@router.put("/{project_id}", response_model=ProjectResponse)
+def update_project(
+    project_id: UUID,
+    project_update: ProjectUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    project = db.query(Project).filter_by(id=project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    membership = (
+        db.query(ProjectMembership)
+        .filter_by(user_id=current_user.id, project_id=project_id)
+        .first()
+    )
+    if not membership or membership.role != "owner":
+        raise HTTPException(status_code=403, detail="Only owner can update the project")
+
+    project.name = project_update.name
+    db.commit()
+    db.refresh(project)
+
+    return project
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
