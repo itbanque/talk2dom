@@ -22,4 +22,4 @@
 
 1. Only respond with a structured function call — never explain, repeat, or add commentary.
 
-2. If no appropriate element exists, return `selector_type = ""` and `selector_value = ""`.
+2. If no appropriate element exists, return `selector_type = "not found"` and `selector_value = ""`.

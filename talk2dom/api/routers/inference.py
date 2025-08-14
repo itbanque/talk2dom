@@ -49,62 +49,64 @@ def locate(
         logger.error(f"Failed to clean html: {err}")
         raise HTTPException(status_code=500, detail="Invalid HTML")
 
-    try:
-        request.state.call_llm = False
-        selector_type, selector_value = get_cached_locator(
-            req.user_instruction, structure_html, req.url, project_id
-        )
-        if selector_type and selector_value:
-            if verifier.verify(selector_type, selector_value):
-                logger.info(
-                    f"Location verified: type: {selector_type}, value: {selector_value}"
-                )
-                return LocatorResponse(
-                    selector_type=selector_type,
-                    selector_value=selector_value,
-                )
-        selector = call_selector_llm(
-            req.user_instruction,
-            cleaned_html,
-            "gemini-2.5-pro",
-            "google_genai",
-            req.conversation_history,
-            metadata={
-                "user_id": user.id,
-                "project_id": project_id,
-                "email": user.email,
-            },
-        )
-        logger.info(f"Location found: {selector}")
-        request.state.call_llm = True
-        if selector is None:
-            raise HTTPException(status_code=404, detail="locator not found")
-        selector_type, selector_value = selector.selector_type, selector.selector_value
-        request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
-        request.state.output_tokens = len(selector_type) + len(selector_value)
-
+    request.state.call_llm = False
+    selector_type, selector_value = get_cached_locator(
+        req.user_instruction, structure_html, req.url, project_id
+    )
+    if selector_type and selector_value:
         if verifier.verify(selector_type, selector_value):
             logger.info(
                 f"Location verified: type: {selector_type}, value: {selector_value}"
             )
-            save_locator(
-                req.user_instruction,
-                structure_html,
-                selector_type,
-                selector_value,
-                req.url,
-                project_id=project_id,
-                html=cleaned_html,
-            )
             return LocatorResponse(
                 selector_type=selector_type,
                 selector_value=selector_value,
-                page_html=None,
             )
-        raise HTTPException(status_code=500, detail="Location not found")
-    except Exception as e:
-        logger.error(f"Location failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    selector = call_selector_llm(
+        req.user_instruction,
+        cleaned_html,
+        "gemini-2.5-pro",
+        "google_genai",
+        req.conversation_history,
+        metadata={
+            "user_id": user.id,
+            "project_id": project_id,
+            "email": user.email,
+        },
+    )
+    logger.info(f"Location found: {selector}")
+    request.state.call_llm = True
+    if selector is None:
+        return LocatorResponse(
+            selector_type="not found",
+            selector_value="",
+        )
+    selector_type, selector_value = selector.selector_type, selector.selector_value
+    request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
+    request.state.output_tokens = len(selector_type) + len(selector_value)
+
+    if verifier.verify(selector_type, selector_value):
+        logger.info(
+            f"Location verified: type: {selector_type}, value: {selector_value}"
+        )
+        save_locator(
+            req.user_instruction,
+            structure_html,
+            selector_type,
+            selector_value,
+            req.url,
+            project_id=project_id,
+            html=cleaned_html,
+        )
+        return LocatorResponse(
+            selector_type=selector_type,
+            selector_value=selector_value,
+            page_html=None,
+        )
+    return LocatorResponse(
+        selector_type="not found",
+        selector_value="",
+    )
 
 
 @router.post("/locator-playground", response_model=LocatorResponse)
@@ -126,58 +128,60 @@ def locate_playground(
         logger.error(f"Failed to clean html: {err}")
         raise HTTPException(status_code=500, detail="Invalid HTML")
 
-    try:
-        request.state.call_llm = False
-        selector_type, selector_value = get_cached_locator(
-            req.user_instruction, structure_html, req.url
-        )
-        if selector_type and selector_value:
-            if verifier.verify(selector_type, selector_value):
-                logger.info(
-                    f"Location verified: type: {selector_type}, value: {selector_value}"
-                )
-                return LocatorResponse(
-                    selector_type=selector_type,
-                    selector_value=selector_value,
-                    page_html=html,
-                )
-        selector = call_selector_llm(
-            req.user_instruction,
-            cleaned_html,
-            "gemini-2.5-pro",
-            "google_genai",
-            req.conversation_history,
-            metadata={
-                "user_id": user.id,
-                "email": user.email,
-            },
-        )
-        logger.info(f"Location found: {selector}")
-        request.state.call_llm = True
-        if selector is None:
-            raise HTTPException(status_code=404, detail="locator not found")
-        selector_type, selector_value = selector.selector_type, selector.selector_value
-        request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
-        request.state.output_tokens = len(selector_type) + len(selector_value)
-
+    request.state.call_llm = False
+    selector_type, selector_value = get_cached_locator(
+        req.user_instruction, structure_html, req.url
+    )
+    if selector_type and selector_value:
         if verifier.verify(selector_type, selector_value):
             logger.info(
                 f"Location verified: type: {selector_type}, value: {selector_value}"
-            )
-            save_locator(
-                req.user_instruction,
-                structure_html,
-                selector_type,
-                selector_value,
-                req.url,
-                html=cleaned_html,
             )
             return LocatorResponse(
                 selector_type=selector_type,
                 selector_value=selector_value,
                 page_html=html,
             )
-        raise HTTPException(status_code=500, detail="Location not found")
-    except Exception as e:
-        logger.error(f"Location failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    selector = call_selector_llm(
+        req.user_instruction,
+        cleaned_html,
+        "gemini-2.5-pro",
+        "google_genai",
+        req.conversation_history,
+        metadata={
+            "user_id": user.id,
+            "email": user.email,
+        },
+    )
+    logger.info(f"Location found: {selector}")
+    request.state.call_llm = True
+    if selector is None:
+        return LocatorResponse(
+            selector_type="not found",
+            selector_value="",
+        )
+    selector_type, selector_value = selector.selector_type, selector.selector_value
+    request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
+    request.state.output_tokens = len(selector_type) + len(selector_value)
+
+    if verifier.verify(selector_type, selector_value):
+        logger.info(
+            f"Location verified: type: {selector_type}, value: {selector_value}"
+        )
+        save_locator(
+            req.user_instruction,
+            structure_html,
+            selector_type,
+            selector_value,
+            req.url,
+            html=cleaned_html,
+        )
+        return LocatorResponse(
+            selector_type=selector_type,
+            selector_value=selector_value,
+            page_html=html,
+        )
+    return LocatorResponse(
+        selector_type="not found",
+        selector_value="",
+    )

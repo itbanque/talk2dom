@@ -87,6 +87,7 @@ class SelectorType(str, Enum):
     CLASS_NAME = "class name"
     XPATH = "xpath"
     CSS_SELECTOR = "css selector"
+    NOT_FOUND = "not found"
 
 
 class Selector(BaseModel):
