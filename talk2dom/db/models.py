@@ -18,6 +18,7 @@ from datetime import datetime
 import uuid
 from sqlalchemy.orm import Session, relationship
 
+from talk2dom.api.utils.email import send_welcome_email
 
 Base = declarative_base()
 
@@ -93,6 +94,7 @@ class User(Base):
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
+        send_welcome_email(email)
         return new_user
 
     @classmethod
@@ -160,6 +162,7 @@ class User(Base):
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
+        send_welcome_email(email)
         return new_user
 
 

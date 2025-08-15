@@ -7,6 +7,8 @@ from talk2dom.db.models import User, APIKey
 from talk2dom.db.session import get_db
 from talk2dom.api.deps import get_current_user
 from talk2dom.api.utils.token import confirm_email_token, generate_email_token
+from talk2dom.api.utils.email import send_welcome_email, send_verification_email
+
 import secrets
 import os
 
@@ -145,6 +147,7 @@ def verify_email(request: Request, token: str, db: Session = Depends(get_db)):
 
     user.is_active = True
     db.commit()
+    send_welcome_email(email)
 
     return templates.TemplateResponse(
         "verify_success.html",
@@ -161,8 +164,8 @@ def resend_verify_email(request: Request, user: User = Depends(get_current_user)
     token = generate_email_token(user.email)
     base_url = str(request.base_url).rstrip("/")
     verify_url = f"{base_url}/api/v1/user/verify-email?token={token}"
-    # send_verification_email(to_email=data.email, verify_url=verify_url)
-    logger.info(f"Sending verification email to {verify_url}")
+    send_verification_email(to_email=user.email, verify_url=verify_url)
+    logger.info(f"Resending verification email to {verify_url}")
     return {"message": "Verification email sent."}
 
 
