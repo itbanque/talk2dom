@@ -58,12 +58,16 @@ def send_welcome_email(to_email: str):
             <p style="margin: 0 0 16px; text-align: center; color: #4b5563;">Watch quick demos to see Talk2Dom in action.</p>
 
             <p style="margin: 8px 0; font-weight: bold; text-align: center; color: #1e40af;">Playground Overview</p>
-            <div style="margin-bottom: 16px;">
-                <iframe width="100%" height="315" src="https://www.youtube.com/watch?v=m-BQ-4vu-14" frameborder="0" allowfullscreen></iframe>
+            <div style="margin-bottom: 16px; text-align:center;">
+              <a href="https://www.youtube.com/watch?v=m-BQ-4vu-14" target="_blank" style="text-decoration:none; display:inline-block;">
+                <img src="https://img.youtube.com/vi/m-BQ-4vu-14/maxresdefault.jpg" alt="Playground Overview" width="100%" style="border:0; outline:none; text-decoration:none; max-width:600px; height:auto; display:block; border-radius:8px;">
+              </a>
             </div>
             <p style="margin: 8px 0; font-weight: bold; text-align: center; color: #1e40af;">Chrome Extension Walkthrough</p>
-            <div style="margin-bottom: 16px;">
-                <iframe width="100%" height="315" src="https://www.youtube.com/watch?v=Rog8AX0A8qU" frameborder="0" allowfullscreen></iframe>
+            <div style="margin-bottom: 16px; text-align:center;">
+              <a href="https://www.youtube.com/watch?v=Rog8AX0A8qU" target="_blank" style="text-decoration:none; display:inline-block;">
+                <img src="https://img.youtube.com/vi/Rog8AX0A8qU/maxresdefault.jpg" alt="Chrome Extension Walkthrough" width="100%" style="border:0; outline:none; text-decoration:none; max-width:600px; height:auto; display:block; border-radius:8px;">
+              </a>
             </div>
 
             <p style="margin-top: 28px; text-align: center; color: #6b7280;">— The Talk2Dom Team</p>
