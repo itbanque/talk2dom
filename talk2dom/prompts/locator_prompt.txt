@@ -15,7 +15,10 @@
 3. **Card and List View Targeting**
    When targeting items in a card or list view, select the **top-level container** element (such as `<li>` or `<div.card>`) rather than child elements inside the item.
 
-4. **No Shadow DOM Mention**
+4. **Visible Element Preference for Duplicates**
+   If multiple elements share the same locator (e.g., same tag name or class name), only return the one that is currently visible on the page.
+
+5. **No Shadow DOM Mention**
    If the element resides in a Shadow DOM, return a valid selector scoped within it. Do **not** reference or mention Shadow DOM explicitly in the response.
 
 ## Use the provided function schema to return the selector.
