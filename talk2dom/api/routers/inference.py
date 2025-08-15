@@ -40,14 +40,14 @@ def locate(
 ):
     html = req.html
     if not html:
-        raise HTTPException(status_code=404, detail="html not found")
+        raise Exception("html is empty")
     try:
         structure_html = clean_html_keep_structure_only(html)
         cleaned_html = clean_html(html)
         verifier = SelectorValidator(cleaned_html)
     except Exception as err:
         logger.error(f"Failed to clean html: {err}")
-        raise HTTPException(status_code=500, detail="Invalid HTML")
+        raise Exception("Invalid html")
 
     request.state.call_llm = False
     selector_type, selector_value = get_cached_locator(
@@ -77,10 +77,7 @@ def locate(
     logger.info(f"Location found: {selector}")
     request.state.call_llm = True
     if selector is None:
-        return LocatorResponse(
-            selector_type="not found",
-            selector_value="",
-        )
+        raise Exception("LLM invoke failed")
     selector_type, selector_value = selector.selector_type, selector.selector_value
     request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
     request.state.output_tokens = len(selector_type) + len(selector_value)
@@ -104,8 +101,8 @@ def locate(
             page_html=None,
         )
     return LocatorResponse(
-        selector_type="not found",
-        selector_value="",
+        selector_type=selector_type,
+        selector_value=selector_value,
     )
 
 
@@ -156,10 +153,7 @@ def locate_playground(
     logger.info(f"Location found: {selector}")
     request.state.call_llm = True
     if selector is None:
-        return LocatorResponse(
-            selector_type="not found",
-            selector_value="",
-        )
+        raise Exception("LLM invoke failed")
     selector_type, selector_value = selector.selector_type, selector.selector_value
     request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
     request.state.output_tokens = len(selector_type) + len(selector_value)
@@ -182,6 +176,6 @@ def locate_playground(
             page_html=html,
         )
     return LocatorResponse(
-        selector_type="not found",
-        selector_value="",
+        selector_type=selector_type,
+        selector_value=selector_value,
     )
