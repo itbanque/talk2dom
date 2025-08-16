@@ -18,7 +18,7 @@
 
 如果觉得项目有帮助，请点击 Star 支持我们：
 
-[![点亮 Star 支持我们](https://github.com/user-attachments/assets/8891ddce-7604-46c1-bd23-2218224f3aae)](https://github.com/itbanque/talk2dom)
+[![点亮 Star 支持我们](https://github.com/user-attachments/assets/6735404a-f54d-448c-91e7-808138c46454)](https://github.com/itbanque/talk2dom)
 
 
 ## 🧠 为什么使用 `talk2dom`
