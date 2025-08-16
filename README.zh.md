@@ -18,7 +18,9 @@
 
 如果觉得项目有帮助，请点击 Star 支持我们：
 
-[![点亮 Star 支持我们](https://github.com/user-attachments/assets/6735404a-f54d-448c-91e7-808138c46454)](https://github.com/itbanque/talk2dom)
+<a href="https://github.com/itbanque/talk2dom">
+  <img src="https://github.com/user-attachments/assets/6735404a-f54d-448c-91e7-808138c46454" alt="点亮 Star 支持我们" width="400"/>
+</a>
 
 
 ## 🧠 为什么使用 `talk2dom`
