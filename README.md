@@ -20,7 +20,9 @@
 
 If you like `talk2dom`, consider giving it a star on GitHub! It helps others discover the project and keeps the community growing.
 
-[![Star Demo](https://github.com/user-attachments/assets/8891ddce-7604-46c1-bd23-2218224f3aae)](https://github.com/itbanque/talk2dom)
+<a href="https://github.com/itbanque/talk2dom">
+  <img src="https://github.com/user-attachments/assets/8891ddce-7604-46c1-bd23-2218224f3aae" width="400">
+</a>
 
 
 ## 🧠 Why `talk2dom`
