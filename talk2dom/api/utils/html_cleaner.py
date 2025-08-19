@@ -54,7 +54,12 @@ def clean_html(raw_html: str) -> str:
     for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
         comment.extract()
 
-    cleaned = str(soup.body).replace("\n", "").replace("\r", "").replace("\t", "")
+    if soup.body is not None:
+        body = soup.body
+    else:
+        body = soup
+
+    cleaned = str(body).replace("\n", "").replace("\r", "").replace("\t", "")
     return cleaned.strip()
 
 
