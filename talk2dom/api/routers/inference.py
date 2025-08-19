@@ -44,10 +44,14 @@ def locate(
     try:
         structure_html = clean_html_keep_structure_only(html)
         cleaned_html = clean_html(html)
+        if cleaned_html is None:
+            raise Exception(
+                "make sure the html is valid and has meaningful information"
+            )
         verifier = SelectorValidator(cleaned_html)
     except Exception as err:
         logger.error(f"Failed to clean html: {err}")
-        raise Exception("Invalid html")
+        raise
 
     request.state.call_llm = False
     selector_type, selector_value = get_cached_locator(
