@@ -87,3 +87,40 @@ def send_welcome_email(to_email: str):
         )
     except Exception as e:
         logger.error(f"Welcome email to {to_email} failed with error: {e}")
+
+
+def send_password_reset_email(to_email, reset_url):
+    if not os.environ.get("SENDGRID_API_KEY"):
+        logger.error("SENDGRID_API_KEY not set")
+        return
+    message = Mail(
+        from_email="noreply@itbanque.com",
+        to_emails=to_email,
+        subject="Reset your Talk2Dom password",
+        html_content=f"""
+        <div style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 24px; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #111827;">
+            <h1 style="color: #1e40af; text-align: center; margin: 0 0 12px;">Reset your Talk2Dom password</h1>
+            <p style="margin: 0 0 16px; text-align: center;">
+                You (or someone else) requested a password reset for your account. Click the button below to set a new password.
+            </p>
+            <div style="text-align: center; margin: 24px 0 8px;">
+                <a href="{reset_url}" style="background-color: #1e40af; color: #ffffff; padding: 12px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">Reset Password</a>
+            </div>
+            <p style="margin: 16px 0; text-align: center; color: #4b5563;">If the button above doesn’t work, copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; text-align: center;"><a href="{reset_url}">{reset_url}</a></p>
+            <hr style="border:none; border-top:1px solid #e5e7eb; margin: 24px 0;">
+            <p style="margin: 0; font-size: 12px; color: #6b7280; text-align: center;">
+                If you didn’t request this, you can safely ignore this email—your password won’t change.
+            </p>
+            <p style="margin-top: 20px; text-align: center; color: #6b7280;">— The Talk2Dom Team</p>
+        </div>
+        """,
+    )
+    try:
+        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
+        response = sg.send(message)
+        logger.info(
+            f"Email sent to {to_email} with status code: {response.status_code}"
+        )
+    except Exception as e:
+        logger.error(f"Email sent to {to_email} with error message: {e}")

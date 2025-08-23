@@ -47,6 +47,7 @@ def app(db_session, monkeypatch):
 
     # Set the SECRET_KEY in the environment before importing email_routes
     os.environ["SECRET_KEY"] = "test-secret-key"
+    os.environ.pop("UI_DOMAIN", None)
     # Patch the SECRET_KEY in talk2dom.api.utils.token
     monkeypatch.setattr("talk2dom.api.utils.token.SECRET_KEY", "test-secret-key")
 
@@ -85,6 +86,18 @@ def app(db_session, monkeypatch):
         pending_called["called"] = True
         pending_called["user_id"] = str(user.id)
 
+    reset_mail = {"called": False, "to": None, "url": None}
+
+    def fake_send_password_reset_email(to_email: str, reset_url: str):
+        reset_mail["called"] = True
+        reset_mail["to"] = to_email
+        reset_mail["url"] = reset_url
+
+    def fake_confirm_email_token(token: str) -> str:
+        if token == "BAD":
+            raise Exception("invalid token")
+        return token
+
     monkeypatch.setattr(email_routes, "generate_email_token", fake_generate_email_token)
     monkeypatch.setattr(
         email_routes, "send_verification_email", fake_send_verification_email
@@ -92,10 +105,15 @@ def app(db_session, monkeypatch):
     monkeypatch.setattr(
         email_routes, "handle_pending_invites", fake_handle_pending_invites
     )
+    monkeypatch.setattr(
+        email_routes, "send_password_reset_email", fake_send_password_reset_email
+    )
+    monkeypatch.setattr(email_routes, "confirm_email_token", fake_confirm_email_token)
 
     # 将可观察对象挂到 app.state，测试里可取用
     app.state._sent_mail = sent_mail
     app.state._pending_called = pending_called
+    app.state._reset_mail = reset_mail
 
     return app
 
@@ -149,10 +167,20 @@ def test_register_existing_email_returns_400(client, db_session):
     # existing
     create_user(db_session, email="dup@example.com", password="x")
     res = client.post(
-        "/api/v1/email/register", json={"email": "dup@example.com", "password": "x"}
+        "/api/v1/email/register",
+        json={"email": "dup@example.com", "password": "xxxxxxxxx"},
     )
     assert res.status_code == 400
     assert "Email already registered" in res.json()["detail"]
+
+
+def test_password_length_return_402(client, db_session):
+    res = client.post(
+        "/api/v1/email/register",
+        json={"email": "test@example.com", "password": "xxxxxxx"},
+    )
+    assert res.status_code == 422
+    assert "at least 8 characters" in res.json()["detail"]
 
 
 # -----------
@@ -204,3 +232,87 @@ def test_login_success_sets_session_and_calls_pending_invites(client, app, db_se
     # last_login should be updated
     refreshed = db_session.query(User).filter(User.id == user.id).first()
     assert refreshed.last_login is not None
+
+
+# -----------
+# /email/forgot-password
+# -----------
+def test_forgot_password_existing_credentials_sends_email(client, app, db_session):
+    email = "reset@example.com"
+    create_user(db_session, email=email, password="OldPass123!", provider="credentials")
+    res = client.post("/api/v1/email/forgot-password", json={"email": email})
+    assert res.status_code == 200
+    assert res.json()["message"] == "Password reset link sent to your email"
+
+    sent = app.state._reset_mail
+    assert sent["called"] is True
+    assert sent["to"] == email
+    assert sent["url"] == "http://testserver/reset-password?token=TESTTOKEN"
+
+
+def test_forgot_password_nonexistent_returns_400(client, app):
+    res = client.post(
+        "/api/v1/email/forgot-password", json={"email": "noone@example.com"}
+    )
+    assert res.status_code == 400
+    assert "Email not registered" in res.json()["detail"]
+
+
+def test_forgot_password_non_credentials_returns_400(client, app, db_session):
+    email = "google@example.com"
+    create_user(db_session, email=email, password="x", provider="google")
+    res = client.post("/api/v1/email/forgot-password", json={"email": email})
+    assert res.status_code == 400
+    assert "Email not registered" in res.json()["detail"]
+
+
+# -----------
+# /email/reset-password
+# -----------
+def test_reset_password_success_changes_password(client, db_session):
+    email = "ok@example.com"
+    old_pwd = "OldPass123!"
+    new_pwd = "NewPass456!"
+    create_user(db_session, email=email, password=old_pwd)
+
+    res = client.post(
+        "/api/v1/email/reset-password", json={"token": email, "new_password": new_pwd}
+    )
+    assert res.status_code == 200
+    assert res.json()["message"] == "Password reset successfully"
+
+    user = db_session.query(User).filter(User.email == email).first()
+    assert hash_helper.verify_password(new_pwd, user.hashed_password)
+    assert not hash_helper.verify_password(old_pwd, user.hashed_password)
+
+
+def test_reset_password_invalid_token_returns_400(client, db_session):
+    email = "badtoken@example.com"
+    create_user(db_session, email=email, password="Whatever123!")
+    res = client.post(
+        "/api/v1/email/reset-password",
+        json={"token": "BAD", "new_password": "NewPass123!"},
+    )
+    assert res.status_code == 400
+    assert "Invalid or expired token" in res.json()["detail"]
+
+
+def test_reset_password_non_credentials_returns_400(client, db_session):
+    email = "g@example.com"
+    create_user(db_session, email=email, password="x", provider="google")
+    res = client.post(
+        "/api/v1/email/reset-password",
+        json={"token": email, "new_password": "NewPass123!"},
+    )
+    assert res.status_code == 400
+    assert "Invalid or expired token" in res.json()["detail"]
+
+
+def test_reset_password_short_password_returns_422(client, db_session):
+    email = "short@example.com"
+    create_user(db_session, email=email, password="ShortOld123!")
+    res = client.post(
+        "/api/v1/email/reset-password", json={"token": email, "new_password": "short"}
+    )
+    assert res.status_code == 422
+    assert "at least 8 characters" in res.json()["detail"]
