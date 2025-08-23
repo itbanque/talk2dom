@@ -78,7 +78,7 @@ def forgot_password(
     ui_domain = os.environ.get("UI_DOMAIN")
     reset_base = ui_domain.rstrip("/") if ui_domain else base_url
     reset_url = f"{reset_base}/reset-password?token={token}"
-
+    logger.info(f"Sending forgot password email to {data.email}, URL: {reset_url}")
     send_password_reset_email(to_email=data.email, reset_url=reset_url)
     logger.info(f"Sent password reset link to {data.email}")
     return {
