@@ -11,6 +11,8 @@ router = APIRouter()
 
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
 
+plan_credits_map = {"free": 0, "developer": 1000, "pro": 5000}
+
 
 @router.post("/stripe")
 async def stripe_webhook(request: Request, stripe_signature: str = Header(...)):
@@ -61,13 +63,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(...)):
         user = db.query(User).filter(User.email == email).first()
         if user:
             subscription = stripe.Subscription.retrieve(subscription_id)
-            if plan == "developer":
-                credits_remaining = 2000
-            elif plan == "pro":
-                credits_remaining = 10000
-            else:
-                credits_remaining = 0
-                plan = "free"
+            credits_remaining = plan_credits_map.get(plan, 0)
             user.plan = plan
             user.stripe_customer_id = customer_id
             user.stripe_subscription_id = subscription_id
@@ -95,15 +91,11 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(...)):
         if user:
             plan = subscription["metadata"].get("plan", "free")
             subscription = stripe.Subscription.retrieve(subscription_id)
-            if plan == "developer":
-                credits_remaining = 2000
-            elif plan == "pro":
-                credits_remaining = 10000
-            else:
-                credits_remaining = 100  # Free fallback
+            credits_remaining = plan_credits_map.get(plan, 0)
 
             user.plan = plan
-            user.subscription_credits = credits_remaining
+            if not subscription["cancel_at_period_end"]:
+                user.subscription_credits = credits_remaining
             user.subscription_end_date = datetime.utcfromtimestamp(
                 subscription["items"]["data"][0]["current_period_end"]
             )
@@ -124,7 +116,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(...)):
         if user:
             user.plan = "free"
             user.stripe_subscription_id = None
-            user.subscription_credits = 100  # Free plan credits
             user.subscription_end_date = None
             user.subscription_status = subscription["status"]
             db.commit()

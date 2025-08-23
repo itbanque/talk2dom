@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, HTTPException, Depends, Request
 
 from talk2dom.core import call_selector_llm, retry, get_page_content
@@ -24,6 +26,9 @@ from talk2dom.api.limiter import limiter
 
 
 router = APIRouter()  #
+
+MODEL_NAME = os.environ.get("TALK2DOM_MODEL_NAME")
+PROVIDER_NAME = os.environ.get("TALK2DOM_MODEL_PROVIDER_NAME")
 
 
 @router.post("/locator", response_model=LocatorResponse)
@@ -69,8 +74,8 @@ def locate(
     selector = call_selector_llm(
         req.user_instruction,
         cleaned_html,
-        "gemini-2.5-pro",
-        "google_genai",
+        MODEL_NAME,
+        PROVIDER_NAME,
         req.conversation_history,
         metadata={
             "user_id": user.id,

@@ -24,7 +24,7 @@ PLAN_PRICE_MAPPING = {
 CREDIT_PRICE_MAPPING = {
     "1000": os.environ.get("STRIPE_TALK2DOM_1000_PRICE"),
     "2200": os.environ.get("STRIPE_TALK2DOM_2200_PRICE"),
-    "5500": os.environ.get("STRIPE_TALK2DOM_5500_PRICE"),
+    "6000": os.environ.get("STRIPE_TALK2DOM_5500_PRICE"),
 }
 
 
