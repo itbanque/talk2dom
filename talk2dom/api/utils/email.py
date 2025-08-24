@@ -1,7 +1,7 @@
 import os
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
-
+from sendgrid.helpers.mail import Mail, From, To, Personalization
+from datetime import datetime
 from loguru import logger
 
 
@@ -9,118 +9,81 @@ def send_verification_email(to_email: str, verify_url: str):
     if not os.environ.get("SENDGRID_API_KEY"):
         logger.error("SENDGRID_API_KEY not set")
         return
-    message = Mail(
-        from_email="noreply@itbanque.com",
-        to_emails=to_email,
-        subject="Welcome to Talk2Dom!",
-        html_content=f"""
-        <div style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 20px; font-family: Arial, sans-serif;">
-            <h1 style="color: #1e40af; text-align: center;">Welcome to Talk2Dom!</h1>
-            <p>Thank you for signing up. Please click the button below to verify your email address.</p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{verify_url}" style="background-color: #1e40af; color: #ffffff; padding: 12px 24px; border-radius: 5px; text-decoration: none; display: inline-block;">Verify Email</a>
-            </div>
-            <p>If the button above doesn't work, copy and paste this link into your browser:</p>
-            <p><a href="{verify_url}">{verify_url}</a></p>
-            <p style="margin-top: 40px;">— The Talk2Dom Team</p>
-        </div>
-        """,
-    )
-    try:
-        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
-        response = sg.send(message)
-        logger.info(
-            f"Email sent to {to_email} with status code: {response.status_code}"
-        )
-    except Exception as e:
-        logger.error(f"Email sent to {to_email} with error message: {e}")
+    if not os.environ.get("SENDGRID_VERIFICATION_TEMPLATE_ID"):
+        logger.error("SENDGRID_VERIFICATION_TEMPLATE_ID not set")
+        return
+    sg = SendGridAPIClient(os.environ["SENDGRID_API_KEY"])
+    mail = Mail()
+    mail.from_email = From("noreply@itbanque.com", "Talk2Dom")
+    mail.template_id = os.environ.get("SENDGRID_VERIFICATION_TEMPLATE_ID")
+    name = to_email.split("@")[0]
+    year = datetime.now().year
+
+    p = Personalization()
+    p.add_to(To(to_email, name))
+    p.dynamic_template_data = {
+        "name": name,
+        "verify_url": verify_url,
+        "preheader": "Confirm your email to start using Talk2Dom.",
+        "year": year,
+        "expires_in_minutes": "60",
+    }
+    mail.add_personalization(p)
+    resp = sg.client.mail.send.post(request_body=mail.get())
+    logger.info(f"verification email sent to {to_email}: {resp.status_code}")
 
 
 def send_welcome_email(to_email: str):
     if not os.environ.get("SENDGRID_API_KEY"):
         logger.error("SENDGRID_API_KEY not set")
         return
-    html_content = """
-        <div style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 24px; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #111827;">
-            <h1 style="color: #1e40af; text-align: center; margin: 0 0 12px;">Welcome to Talk2Dom!</h1>
-            <p style="margin: 0 0 16px; text-align: center;">
-                Thanks for joining! Talk2Dom uses AI to find web elements fast and reliably. Explore our AI-powered web element detection service and get started today.
-            </p>
+    if not os.environ.get("SENDGRID_WELCOME_TEMPLATE_ID"):
+        logger.error("SENDGRID_WELCOME_TEMPLATE_ID not set")
+        return
+    sg = SendGridAPIClient(os.environ["SENDGRID_API_KEY"])
+    mail = Mail()
+    mail.subject = "Talk2Dom: Welcome to Talk2Dom."
+    mail.from_email = From("noreply@itbanque.com", "Talk2Dom")
+    mail.template_id = os.environ.get("SENDGRID_WELCOME_TEMPLATE_ID")
+    name = to_email.split("@")[0]
+    year = datetime.now().year
 
-            <!-- Primary CTAs -->
-            <div style="text-align: center; margin: 24px 0 8px;">
-                <a href="https://talk2dom.itbanque.com" style="background-color: #1e40af; color: #ffffff; padding: 12px 20px; border-radius: 6px; text-decoration: none; display: inline-block; margin: 0 6px 10px;">Go to Talk2Dom</a>
-                <a href="https://talk2dom.itbanque.com/docs" style="background-color: #0ea5e9; color: #ffffff; padding: 12px 20px; border-radius: 6px; text-decoration: none; display: inline-block; margin: 0 6px 10px;">Read Docs</a>
-            </div>
-
-            <!-- Demos Section -->
-            <h2 style="font-size: 18px; margin: 24px 0 8px; color: #111827; text-align: center;">Product Demos</h2>
-            <p style="margin: 0 0 16px; text-align: center; color: #4b5563;">Watch quick demos to see Talk2Dom in action.</p>
-
-            <p style="margin: 8px 0; font-weight: bold; text-align: center; color: #1e40af;">Playground Overview</p>
-            <div style="margin-bottom: 16px; text-align:center;">
-              <a href="https://www.youtube.com/watch?v=m-BQ-4vu-14" target="_blank" style="text-decoration:none; display:inline-block;">
-                <img src="https://img.youtube.com/vi/m-BQ-4vu-14/maxresdefault.jpg" alt="Playground Overview" width="100%" style="border:0; outline:none; text-decoration:none; max-width:600px; height:auto; display:block; border-radius:8px;">
-              </a>
-            </div>
-            <p style="margin: 8px 0; font-weight: bold; text-align: center; color: #1e40af;">Chrome Extension Walkthrough</p>
-            <div style="margin-bottom: 16px; text-align:center;">
-              <a href="https://www.youtube.com/watch?v=Rog8AX0A8qU" target="_blank" style="text-decoration:none; display:inline-block;">
-                <img src="https://img.youtube.com/vi/Rog8AX0A8qU/maxresdefault.jpg" alt="Chrome Extension Walkthrough" width="100%" style="border:0; outline:none; text-decoration:none; max-width:600px; height:auto; display:block; border-radius:8px;">
-              </a>
-            </div>
-
-            <p style="margin-top: 28px; text-align: center; color: #6b7280;">— The Talk2Dom Team</p>
-        </div>
-    """
-    message = Mail(
-        from_email="noreply@itbanque.com",
-        to_emails=to_email,
-        subject="Welcome to Talk2Dom!",
-        html_content=html_content,
-    )
-    try:
-        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
-        response = sg.send(message)
-        logger.info(
-            f"Welcome email sent to {to_email} with status code: {response.status_code}"
-        )
-    except Exception as e:
-        logger.error(f"Welcome email to {to_email} failed with error: {e}")
+    p = Personalization()
+    p.add_to(To(to_email, name))
+    p.dynamic_template_data = {
+        "name": name,
+        "dashboard_url": "https://talk2dom.itbanque.com/projects",
+        "docs_url": "https://talk2dom.itbanque.com/docs",
+        "preheader": "Welcome to Talk2Dom! Explore AI-powered web element detection today.",
+        "year": year,
+    }
+    mail.add_personalization(p)
+    resp = sg.client.mail.send.post(request_body=mail.get())
+    logger.info(f"welcome email sent to {to_email}: {resp.status_code}")
 
 
 def send_password_reset_email(to_email, reset_url):
     if not os.environ.get("SENDGRID_API_KEY"):
         logger.error("SENDGRID_API_KEY not set")
         return
-    message = Mail(
-        from_email="noreply@itbanque.com",
-        to_emails=to_email,
-        subject="Reset your Talk2Dom password",
-        html_content=f"""
-        <div style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 24px; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #111827;">
-            <h1 style="color: #1e40af; text-align: center; margin: 0 0 12px;">Reset your Talk2Dom password</h1>
-            <p style="margin: 0 0 16px; text-align: center;">
-                You (or someone else) requested a password reset for your account. Click the button below to set a new password.
-            </p>
-            <div style="text-align: center; margin: 24px 0 8px;">
-                <a href="{reset_url}" style="background-color: #1e40af; color: #ffffff; padding: 12px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">Reset Password</a>
-            </div>
-            <p style="margin: 16px 0; text-align: center; color: #4b5563;">If the button above doesn’t work, copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; text-align: center;"><a href="{reset_url}">{reset_url}</a></p>
-            <hr style="border:none; border-top:1px solid #e5e7eb; margin: 24px 0;">
-            <p style="margin: 0; font-size: 12px; color: #6b7280; text-align: center;">
-                If you didn’t request this, you can safely ignore this email—your password won’t change.
-            </p>
-            <p style="margin-top: 20px; text-align: center; color: #6b7280;">— The Talk2Dom Team</p>
-        </div>
-        """,
-    )
-    try:
-        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
-        response = sg.send(message)
-        logger.info(
-            f"Email sent to {to_email} with status code: {response.status_code}"
-        )
-    except Exception as e:
-        logger.error(f"Email sent to {to_email} with error message: {e}")
+    if not os.environ.get("SENDGRID_RESET_PASSWORD_TEMPLATE_ID"):
+        logger.error("SENDGRID_RESET_PASSWORD_TEMPLATE_ID not set")
+        return
+    sg = SendGridAPIClient(os.environ["SENDGRID_API_KEY"])
+    mail = Mail()
+    mail.from_email = From("noreply@itbanque.com", "Talk2Dom")
+    mail.template_id = os.environ.get("SENDGRID_RESET_PASSWORD_TEMPLATE_ID")
+    name = to_email.split("@")[0]
+    year = datetime.now().year
+
+    p = Personalization()
+    p.add_to(To(to_email, name))
+    p.dynamic_template_data = {
+        "name": name,
+        "reset_url": reset_url,
+        "preheader": "Reset your Talk2Dom password.",
+        "year": year,
+    }
+    mail.add_personalization(p)
+    resp = sg.client.mail.send.post(request_body=mail.get())
+    logger.info(f"Reset password email sent to {to_email}: {resp.status_code}")
