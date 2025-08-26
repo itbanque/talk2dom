@@ -151,8 +151,8 @@ def locate_playground(
     selector = call_selector_llm(
         req.user_instruction,
         cleaned_html,
-        "gemini-2.5-pro",
-        "google_genai",
+        MODEL_NAME,
+        PROVIDER_NAME,
         req.conversation_history,
         metadata={
             "user_id": user.id,
