@@ -1,11 +1,15 @@
 # ga4.py
-import os, time, uuid, requests
+import os
+import time
+import uuid
+import requests
 from loguru import logger
 
 GA4_MEASUREMENT_ID = os.getenv("GA4_MEASUREMENT_ID")  # G-XXXXXXX
 GA4_API_SECRET = os.getenv("GA4_API_SECRET")
 GA4_COLLECT = "https://www.google-analytics.com/mp/collect"
 GA4_DEBUG = "https://www.google-analytics.com/debug/mp"
+
 
 class GA4:
     def __init__(self, measurement_id=None, api_secret=None, debug=False, timeout=5):
@@ -17,7 +21,7 @@ class GA4:
     def send(
         self,
         user_id: str,
-        events: list[dict],          # [{"name":..., "params": {...}, "event_id": "..."}]
+        events: list[dict],  # [{"name":..., "params": {...}, "event_id": "..."}]
         user_properties: dict | None = None,
         timestamp_micros: int | None = None,
         non_personalized_ads: bool = False,
@@ -41,7 +45,9 @@ class GA4:
             params = dict(e.get("params") or {})
             params.setdefault("engagement_time_msec", 1)
             event_id = e.get("event_id") or str(uuid.uuid4())
-            payload["events"].append({"name": name, "params": params, "event_id": event_id})
+            payload["events"].append(
+                {"name": name, "params": params, "event_id": event_id}
+            )
 
         endpoint = GA4_DEBUG if self.debug else GA4_COLLECT
         resp = requests.post(
