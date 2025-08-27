@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from talk2dom.db.session import get_db
 from talk2dom.db.models import User, APIUsage, APIKey
 from talk2dom.api.limiter import limiter
+from talk2dom.api.utils.ga4 import GA4
 from talk2dom.db.models import ProjectInvite, ProjectMembership, Project
 from slowapi.errors import RateLimitExceeded
 from fastapi import Request, HTTPException, Depends
@@ -22,6 +23,7 @@ num_limit = {
     "pro": 10,
     "enterprise": float("inf"),
 }
+ga = GA4()
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
@@ -95,13 +97,6 @@ def track_api_usage():
                 <= 0
             ):
                 raise HTTPException(status_code=402, detail="Not enough credits")
-
-            num_limit = {
-                "free": 1,
-                "developer": 2,
-                "pro": 10,
-                "enterprise": float("inf"),
-            }
             members = (
                 db.query(ProjectMembership)
                 .filter(ProjectMembership.project_id == project_id)
@@ -127,7 +122,7 @@ def track_api_usage():
             input_tokens = getattr(request.state, "input_tokens", None)
             output_tokens = getattr(request.state, "output_tokens", None)
             metadata = getattr(request.state, "usage_metadata", {})
-
+            call_llm = getattr(request.state, "call_llm", False)
             usage = APIUsage(
                 api_key_id=api_key_id,
                 user_id=user.id,
@@ -140,15 +135,31 @@ def track_api_usage():
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 meta_data=metadata,
-                call_llm=getattr(request.state, "call_llm", False),
+                call_llm=call_llm,
             )
             db.add(usage)
 
             if status_code == 200:
                 consume_credit(db, project_owner, amount=1)
-
             db.commit()
-
+            try:
+                ga.send(
+                    user_id=user.id,
+                    events=[
+                        {
+                            "name": "locator_api_call",
+                            "params": {
+                                "url": str(request.url.path),
+                                "latency_ms": duration_ms,
+                                "status": status_code,
+                                "call_llm": call_llm,
+                            },
+                        }
+                    ],
+                    user_properties={"plan": user.plan},
+                )
+            except Exception as e:
+                logger.warning(f"GA4 send failed: {e}")
             if status_code == 500:
                 return JSONResponse(content=response_data, status_code=500)
             return response_data
@@ -183,6 +194,7 @@ def playground_track_api_usage():
             input_tokens = getattr(request.state, "input_tokens", None)
             output_tokens = getattr(request.state, "output_tokens", None)
             metadata = getattr(request.state, "usage_metadata", {})
+            call_llm = getattr(request.state, "call_llm", False)
 
             usage = APIUsage(
                 api_key_id=None,
@@ -196,7 +208,7 @@ def playground_track_api_usage():
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 meta_data=metadata,
-                call_llm=getattr(request.state, "call_llm", False),
+                call_llm=call_llm,
             )
             db.add(usage)
 
@@ -204,9 +216,26 @@ def playground_track_api_usage():
                 consume_credit(db, user, amount=1)
 
             db.commit()
-
+            try:
+                ga.send(
+                    user_id=user.id,
+                    events=[
+                        {
+                            "name": "playground_locator_api_call",
+                            "params": {
+                                "url": str(request.url.path),
+                                "latency_ms": duration_ms,
+                                "status": status_code,
+                                "call_llm": call_llm,
+                            },
+                        }
+                    ],
+                    user_properties={"plan": user.plan},
+                )
+            except Exception as e:
+                logger.warning(f"GA4 send failed: {e}")
             if status_code == 500:
-                return HTTPException(detail=response_data, status_code=500)
+                raise HTTPException(detail=response_data, status_code=500)
             return response_data
 
         return wrapper
