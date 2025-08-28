@@ -33,16 +33,16 @@ def register_user(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Password must be at least 8 characters long",
         )
-
-    existing_user = db.query(User).filter(User.email == data.email).first()
+    email = str(data.email).lower()
+    existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
     new_user = User(
-        email=data.email,
-        provider_user_id=f"local:{data.email}",
+        email=email,
+        provider_user_id=f"local:{email}",
         hashed_password=hash_helper.hash_password(data.password),
         provider="credentials",
         plan="free",
@@ -52,11 +52,11 @@ def register_user(
     db.refresh(new_user)
 
     # Send verification email
-    token = generate_email_token(data.email)
+    token = generate_email_token(email)
     base_url = str(request.base_url).rstrip("/")
     verify_url = f"{base_url}/api/v1/user/verify-email?token={token}"
-    send_verification_email(to_email=data.email, verify_url=verify_url)
-    logger.info(f"Sending verification email to {data.email}, URL: {verify_url}")
+    send_verification_email(to_email=email, verify_url=verify_url)
+    logger.info(f"Sending verification email to {email}, URL: {verify_url}")
     return {"message": "Registration successful. Please verify your email."}
 
 
@@ -66,21 +66,21 @@ def forgot_password(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(User.email == data.email).first()
+    email = str(data.email).lower()
+    user = db.query(User).filter(User.email == email).first()
     if not user or user.provider != "credentials":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email not registered"
         )
-
-    token = generate_email_token(data.email)
+    token = generate_email_token(email)
     base_url = str(request.base_url).rstrip("/")
     # Prefer UI domain if configured
     ui_domain = os.environ.get("UI_DOMAIN")
     reset_base = ui_domain.rstrip("/") if ui_domain else base_url
     reset_url = f"{reset_base}/reset-password?token={token}"
-    logger.info(f"Sending forgot password email to {data.email}, URL: {reset_url}")
-    send_password_reset_email(to_email=data.email, reset_url=reset_url)
-    logger.info(f"Sent password reset link to {data.email}")
+    logger.info(f"Sending forgot password email to {email}, URL: {reset_url}")
+    send_password_reset_email(to_email=email, reset_url=reset_url)
+    logger.info(f"Sent password reset link to {email}")
     return {
         "message": "Password reset link sent to your email",
     }
@@ -93,7 +93,8 @@ def login_user(
     response: Response,
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(User.email == data.email).first()
+    email = str(data.email).lower()
+    user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
