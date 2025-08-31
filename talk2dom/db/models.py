@@ -239,6 +239,7 @@ class UILocatorCache(Base):
     html_id = Column(String, ForeignKey("html.id"))
     selector_type = Column(String, nullable=False)
     selector_value = Column(String, nullable=False)
+    action = Column(String, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 

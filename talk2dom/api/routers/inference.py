@@ -59,7 +59,7 @@ def locate(
         raise
 
     request.state.call_llm = False
-    selector_type, selector_value = get_cached_locator(
+    selector_type, selector_value, action = get_cached_locator(
         req.user_instruction, structure_html, req.url, project_id
     )
     if selector_type and selector_value:
@@ -68,6 +68,7 @@ def locate(
                 f"Location verified: type: {selector_type}, value: {selector_value}"
             )
             return LocatorResponse(
+                action=action,
                 selector_type=selector_type,
                 selector_value=selector_value,
             )
@@ -87,7 +88,11 @@ def locate(
     request.state.call_llm = True
     if selector is None:
         raise Exception("LLM invoke failed")
-    selector_type, selector_value = selector.selector_type, selector.selector_value
+    action, selector_type, selector_value = (
+        selector.action,
+        selector.selector_type,
+        selector.selector_value,
+    )
     request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
     request.state.output_tokens = len(selector_type) + len(selector_value)
 
@@ -100,16 +105,19 @@ def locate(
             structure_html,
             selector_type,
             selector_value,
-            req.url,
+            action=action,
+            url=req.url,
             project_id=project_id,
             html=cleaned_html,
         )
         return LocatorResponse(
+            action=action,
             selector_type=selector_type,
             selector_value=selector_value,
             page_html=None,
         )
     return LocatorResponse(
+        action=action,
         selector_type=selector_type,
         selector_value=selector_value,
     )
@@ -124,18 +132,23 @@ def locate_playground(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    html = get_page_content(req.url, req.view)
-    html = convert_relative_paths_to_absolute(html, req.url)
+    html = req.html
+    if not html:
+        raise Exception("html is empty")
     try:
         structure_html = clean_html_keep_structure_only(html)
         cleaned_html = clean_html(html)
+        if cleaned_html is None:
+            raise Exception(
+                "make sure the html is valid and has meaningful information"
+            )
         verifier = SelectorValidator(cleaned_html)
     except Exception as err:
         logger.error(f"Failed to clean html: {err}")
-        raise HTTPException(status_code=500, detail="Invalid HTML")
+        raise
 
     request.state.call_llm = False
-    selector_type, selector_value = get_cached_locator(
+    selector_type, selector_value, action = get_cached_locator(
         req.user_instruction, structure_html, req.url
     )
     if selector_type and selector_value:
@@ -144,9 +157,9 @@ def locate_playground(
                 f"Location verified: type: {selector_type}, value: {selector_value}"
             )
             return LocatorResponse(
+                action=action,
                 selector_type=selector_type,
                 selector_value=selector_value,
-                page_html=html,
             )
     selector = call_selector_llm(
         req.user_instruction,
@@ -163,7 +176,11 @@ def locate_playground(
     request.state.call_llm = True
     if selector is None:
         raise Exception("LLM invoke failed")
-    selector_type, selector_value = selector.selector_type, selector.selector_value
+    action, selector_type, selector_value = (
+        selector.action,
+        selector.selector_type,
+        selector.selector_value,
+    )
     request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
     request.state.output_tokens = len(selector_type) + len(selector_value)
 
@@ -176,15 +193,18 @@ def locate_playground(
             structure_html,
             selector_type,
             selector_value,
-            req.url,
+            action=action,
+            url=req.url,
             html=cleaned_html,
         )
         return LocatorResponse(
+            action=action,
             selector_type=selector_type,
             selector_value=selector_value,
-            page_html=html,
+            page_html=None,
         )
     return LocatorResponse(
+        action=action,
         selector_type=selector_type,
         selector_value=selector_value,
     )

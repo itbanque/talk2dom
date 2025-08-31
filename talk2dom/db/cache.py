@@ -29,9 +29,9 @@ def get_cached_locator(
     html: str,
     url: Optional[str] = None,
     project_id: Optional[str] = "",
-) -> str:
+) -> tuple:
     if SessionLocal is None:
-        return None, None
+        return None, None, None
 
     html_id = hashlib.sha256(url.encode("utf-8")).hexdigest()
     locator_id = compute_locator_id(instruction, html_id, url, project_id)
@@ -43,7 +43,11 @@ def get_cached_locator(
             logger.debug(f"Cache hit for locator ID: {locator_id}")
         else:
             logger.debug(f"Cache miss for locator ID: {locator_id}")
-        return (row.selector_type, row.selector_value) if row else (None, None)
+        return (
+            (row.selector_type, row.selector_value, row.action)
+            if row
+            else (None, None, None)
+        )
     finally:
         session.close()
 
@@ -76,6 +80,7 @@ def save_locator(
     html_backbone: str,
     selector_type: str,
     selector_value: str,
+    action: Optional[str] = None,
     url: Optional[str] = None,
     project_id=None,
     html=str,
@@ -103,6 +108,7 @@ def save_locator(
                 html_id=html_id,
                 selector_type=selector_type,
                 selector_value=selector_value,
+                action=action,
                 project_id=project_id,
             )
             .on_conflict_do_update(
@@ -113,6 +119,7 @@ def save_locator(
                     "html_id": html_id,
                     "selector_type": selector_type,
                     "selector_value": selector_value,
+                    "action": action,
                     "updated_at": datetime.utcnow(),
                 },
             )
