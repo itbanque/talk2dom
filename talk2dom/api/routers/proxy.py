@@ -1,12 +1,16 @@
 import re
 from typing import Optional
 from urllib.parse import urlparse, urljoin, urlencode
+from talk2dom.db.models import User
+from talk2dom.api.deps import (
+    get_current_user,
+)
 
 import httpx
 from bs4 import BeautifulSoup
 from fastapi import Request, Response
 from fastapi.responses import StreamingResponse
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 
 router = APIRouter()
 
@@ -149,7 +153,7 @@ async def proxy(
     rewrite: bool = Query(
         True, description="Whether to rewrite links in the page to continue proxying"
     ),
-    # user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
     """
     A general proxy endpoint supporting all HTTP methods. Specify the upstream URL via the query parameter `url`.
