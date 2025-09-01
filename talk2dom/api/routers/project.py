@@ -453,6 +453,7 @@ def list_locator_cache(
     locator_caches = (
         db.query(UILocatorCache)
         .filter_by(project_id=project_id)
+        .order_by(UILocatorCache.created_at.desc())
         .limit(limit)
         .offset(offset)
         .all()
