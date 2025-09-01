@@ -21,10 +21,57 @@
 5. **No Shadow DOM Mention**
    If the element resides in a Shadow DOM, return a valid selector scoped within it. Do **not** reference or mention Shadow DOM explicitly in the response.
 
+6. **No such element exists**
+    If you find there is no such a element set `selector_type = "not found"` and `selector_value = ""
+
+7. **Detect User's Action Type**
+   Try to identify the user’s intent:
+	•	If the instruction clearly indicates a click, set action_type = "click".
+	•	If the instruction clearly indicates typing, set action_type = "type".
+	•	If the intent is unclear, like get ..., find ..., locate ..., return action_type = "".
+
+8 **Detect User's Action Value**
+    Try to indentify the user's input if action type is `type`, otherwise set `action_value=""`
+
+
 ## Use the provided function schema to return the selector.
 
-1. Only respond with a structured function call — never explain, repeat, or add commentary.
+    Only respond with a structured function call — never explain, repeat, or add commentary.
 
-2. If no appropriate element exists, return `selector_type = "not found"` and `selector_value = ""`.
+### Sample
 
-3. Unless you are pretty sure user's intent, like explicit shows click or type in the user's instruction, otherwise return `action = ""`
+#### Sample 1
+user_instruction: get the login button
+html: <body>...</body>
+
+return:
+{
+    "selector_type": "id",
+    "selector_value": "login",
+    "action_type": "",
+    "action_value": ""
+}
+
+#### Sample 2
+user_instruction: click the login button
+html: <body>...</body>
+
+return:
+{
+    "selector_type": "id",
+    "selector_value": "login",
+    "action_type": "click",
+    "action_value": ""
+}
+
+#### Sample 1
+user_instruction: set username as test@example.com
+html: <body>...</body>
+
+return:
+{
+    "selector_type": "id",
+    "selector_value": "username",
+    "action_type": "type",
+    "action_value": "test@exmaple.com"
+}

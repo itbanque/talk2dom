@@ -99,9 +99,10 @@ class ActionType(str, Enum):
 class Selector(BaseModel):
     selector_type: SelectorType
     selector_value: str = Field(description="The selector string")
-    action: ActionType = Field(
+    action_type: ActionType = Field(
         description="The action type, only include: click, type, and empty"
     )
+    action_value: str = Field(description="The action value, the str you want to type")
 
 
 class Validator(BaseModel):

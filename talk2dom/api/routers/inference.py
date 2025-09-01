@@ -67,8 +67,10 @@ def locate(
             logger.info(
                 f"Location verified: type: {selector_type}, value: {selector_value}"
             )
+            action_type, action_value = action.split(":")
             return LocatorResponse(
-                action=action,
+                action_type=action_type,
+                action_value=action_value,
                 selector_type=selector_type,
                 selector_value=selector_value,
             )
@@ -88,8 +90,9 @@ def locate(
     request.state.call_llm = True
     if selector is None:
         raise Exception("LLM invoke failed")
-    action, selector_type, selector_value = (
-        selector.action,
+    action_type, action_value, selector_type, selector_value = (
+        selector.action_type,
+        selector.action_value,
         selector.selector_type,
         selector.selector_value,
     )
@@ -105,19 +108,20 @@ def locate(
             structure_html,
             selector_type,
             selector_value,
-            action=action,
+            action=":".join((action_type, action_value)),
             url=req.url,
             project_id=project_id,
             html=cleaned_html,
         )
         return LocatorResponse(
-            action=action,
+            action_type=action_type,
+            action_value=action_value,
             selector_type=selector_type,
             selector_value=selector_value,
-            page_html=None,
         )
     return LocatorResponse(
-        action=action,
+        action_type=action_type,
+        action_value=action_value,
         selector_type=selector_type,
         selector_value=selector_value,
     )
@@ -156,8 +160,10 @@ def locate_playground(
             logger.info(
                 f"Location verified: type: {selector_type}, value: {selector_value}"
             )
+            action_type, action_value = action.split(":")
             return LocatorResponse(
-                action=action,
+                action_type=action,
+                action_value=action_value,
                 selector_type=selector_type,
                 selector_value=selector_value,
             )
@@ -176,8 +182,9 @@ def locate_playground(
     request.state.call_llm = True
     if selector is None:
         raise Exception("LLM invoke failed")
-    action, selector_type, selector_value = (
-        selector.action,
+    action_type, action_value, selector_type, selector_value = (
+        selector.action_type,
+        selector.action_value,
         selector.selector_type,
         selector.selector_value,
     )
@@ -193,18 +200,19 @@ def locate_playground(
             structure_html,
             selector_type,
             selector_value,
-            action=action,
+            action=":".join((action_type, action_value)),
             url=req.url,
             html=cleaned_html,
         )
         return LocatorResponse(
-            action=action,
+            action_type=action_type,
+            action_value=action_value,
             selector_type=selector_type,
             selector_value=selector_value,
-            page_html=None,
         )
     return LocatorResponse(
-        action=action,
+        action_type=action_type,
+        action_value=action_value,
         selector_type=selector_type,
         selector_value=selector_value,
     )
