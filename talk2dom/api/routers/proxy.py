@@ -1,14 +1,12 @@
 import re
 from typing import Optional
 from urllib.parse import urlparse, urljoin, urlencode
-from talk2dom.api.deps import get_current_user
-from talk2dom.db.models import User
 
 import httpx
 from bs4 import BeautifulSoup
 from fastapi import Request, Response
 from fastapi.responses import StreamingResponse
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter()
 

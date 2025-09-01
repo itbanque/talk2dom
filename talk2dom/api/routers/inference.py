@@ -1,8 +1,8 @@
 import os
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, Depends, Request
 
-from talk2dom.core import call_selector_llm, retry, get_page_content
+from talk2dom.core import call_selector_llm, retry
 from talk2dom.db.cache import get_cached_locator, save_locator
 from talk2dom.db.session import Session, get_db
 from talk2dom.api.schemas import LocatorRequest, LocatorResponse
@@ -10,7 +10,6 @@ from talk2dom.api.utils.validator import SelectorValidator
 from talk2dom.api.utils.html_cleaner import (
     clean_html,
     clean_html_keep_structure_only,
-    convert_relative_paths_to_absolute,
 )
 from loguru import logger
 from talk2dom.db.models import User
