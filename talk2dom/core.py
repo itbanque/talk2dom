@@ -90,9 +90,19 @@ class SelectorType(str, Enum):
     NOT_FOUND = "not found"
 
 
+class ActionType(str, Enum):
+    CLICK = "click"
+    TYPE = "type"
+    NOT_FOUND = ""
+
+
 class Selector(BaseModel):
     selector_type: SelectorType
     selector_value: str = Field(description="The selector string")
+    action_type: ActionType = Field(
+        description="The action type, only include: click, type, and empty"
+    )
+    action_value: str = Field(description="The action value, the str you want to type")
 
 
 class Validator(BaseModel):

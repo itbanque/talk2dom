@@ -1,8 +1,8 @@
 import os
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, Depends, Request
 
-from talk2dom.core import call_selector_llm, retry, get_page_content
+from talk2dom.core import call_selector_llm, retry
 from talk2dom.db.cache import get_cached_locator, save_locator
 from talk2dom.db.session import Session, get_db
 from talk2dom.api.schemas import LocatorRequest, LocatorResponse
@@ -10,7 +10,6 @@ from talk2dom.api.utils.validator import SelectorValidator
 from talk2dom.api.utils.html_cleaner import (
     clean_html,
     clean_html_keep_structure_only,
-    convert_relative_paths_to_absolute,
 )
 from loguru import logger
 from talk2dom.db.models import User
@@ -59,7 +58,7 @@ def locate(
         raise
 
     request.state.call_llm = False
-    selector_type, selector_value = get_cached_locator(
+    selector_type, selector_value, action = get_cached_locator(
         req.user_instruction, structure_html, req.url, project_id
     )
     if selector_type and selector_value:
@@ -67,7 +66,10 @@ def locate(
             logger.info(
                 f"Location verified: type: {selector_type}, value: {selector_value}"
             )
+            action_type, action_value = action.split(":")
             return LocatorResponse(
+                action_type=action_type,
+                action_value=action_value,
                 selector_type=selector_type,
                 selector_value=selector_value,
             )
@@ -87,7 +89,12 @@ def locate(
     request.state.call_llm = True
     if selector is None:
         raise Exception("LLM invoke failed")
-    selector_type, selector_value = selector.selector_type, selector.selector_value
+    action_type, action_value, selector_type, selector_value = (
+        selector.action_type,
+        selector.action_value,
+        selector.selector_type,
+        selector.selector_value,
+    )
     request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
     request.state.output_tokens = len(selector_type) + len(selector_value)
 
@@ -100,16 +107,20 @@ def locate(
             structure_html,
             selector_type,
             selector_value,
-            req.url,
+            action=":".join((action_type, action_value)),
+            url=req.url,
             project_id=project_id,
             html=cleaned_html,
         )
         return LocatorResponse(
+            action_type=action_type,
+            action_value=action_value,
             selector_type=selector_type,
             selector_value=selector_value,
-            page_html=None,
         )
     return LocatorResponse(
+        action_type=action_type,
+        action_value=action_value,
         selector_type=selector_type,
         selector_value=selector_value,
     )
@@ -124,18 +135,23 @@ def locate_playground(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    html = get_page_content(req.url, req.view)
-    html = convert_relative_paths_to_absolute(html, req.url)
+    html = req.html
+    if not html:
+        raise Exception("html is empty")
     try:
         structure_html = clean_html_keep_structure_only(html)
         cleaned_html = clean_html(html)
+        if cleaned_html is None:
+            raise Exception(
+                "make sure the html is valid and has meaningful information"
+            )
         verifier = SelectorValidator(cleaned_html)
     except Exception as err:
         logger.error(f"Failed to clean html: {err}")
-        raise HTTPException(status_code=500, detail="Invalid HTML")
+        raise
 
     request.state.call_llm = False
-    selector_type, selector_value = get_cached_locator(
+    selector_type, selector_value, action = get_cached_locator(
         req.user_instruction, structure_html, req.url
     )
     if selector_type and selector_value:
@@ -143,10 +159,12 @@ def locate_playground(
             logger.info(
                 f"Location verified: type: {selector_type}, value: {selector_value}"
             )
+            action_type, action_value = action.split(":")
             return LocatorResponse(
+                action_type=action,
+                action_value=action_value,
                 selector_type=selector_type,
                 selector_value=selector_value,
-                page_html=html,
             )
     selector = call_selector_llm(
         req.user_instruction,
@@ -163,7 +181,12 @@ def locate_playground(
     request.state.call_llm = True
     if selector is None:
         raise Exception("LLM invoke failed")
-    selector_type, selector_value = selector.selector_type, selector.selector_value
+    action_type, action_value, selector_type, selector_value = (
+        selector.action_type,
+        selector.action_value,
+        selector.selector_type,
+        selector.selector_value,
+    )
     request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
     request.state.output_tokens = len(selector_type) + len(selector_value)
 
@@ -176,15 +199,19 @@ def locate_playground(
             structure_html,
             selector_type,
             selector_value,
-            req.url,
+            action=":".join((action_type, action_value)),
+            url=req.url,
             html=cleaned_html,
         )
         return LocatorResponse(
+            action_type=action_type,
+            action_value=action_value,
             selector_type=selector_type,
             selector_value=selector_value,
-            page_html=html,
         )
     return LocatorResponse(
+        action_type=action_type,
+        action_value=action_value,
         selector_type=selector_type,
         selector_value=selector_value,
     )

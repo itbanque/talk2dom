@@ -32,7 +32,7 @@ def test_get_cached_locator_hit(mock_session):
     mock_row.selector_value = "login"
     mock_session.query().filter_by().first.return_value = mock_row
 
-    selector_type, selector_value = get_cached_locator(
+    selector_type, selector_value, action = get_cached_locator(
         "desc", "<html></html>", url="http://test.com"
     )
     assert selector_type == "id"
@@ -41,7 +41,7 @@ def test_get_cached_locator_hit(mock_session):
 
 def test_get_cached_locator_miss(mock_session):
     mock_session.query().filter_by().first.return_value = None
-    selector_type, selector_value = get_cached_locator(
+    selector_type, selector_value, action = get_cached_locator(
         "desc", "<html></html>", url="http://test.com"
     )
     assert selector_type is None

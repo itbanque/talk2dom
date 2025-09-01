@@ -20,6 +20,8 @@ class LocatorRequest(BaseModel):
 
 
 class LocatorResponse(BaseModel):
+    action_type: Optional[str] = None
+    action_value: Optional[str] = None
     selector_type: str
     selector_value: str
     page_html: Optional[str] = None
