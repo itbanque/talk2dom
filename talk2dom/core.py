@@ -9,8 +9,6 @@ from pydantic import BaseModel, Field
 from langchain.chat_models import init_chat_model
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
 
-from playwright.sync_api import sync_playwright
-
 from loguru import logger
 
 from langfuse import Langfuse
@@ -90,16 +88,10 @@ class SelectorType(str, Enum):
     NOT_FOUND = "not found"
 
 
-class ActionType(str, Enum):
-    CLICK = "click"
-    TYPE = "type"
-    NOT_FOUND = ""
-
-
 class Selector(BaseModel):
     selector_type: SelectorType
     selector_value: str = Field(description="The selector string")
-    action_type: ActionType = Field(
+    action_type: str = Field(
         description="The action type, only include: click, type, and empty"
     )
     action_value: str = Field(description="The action value, the str you want to type")
@@ -211,20 +203,6 @@ def get_computed_styles(driver, element, properties=None):
         return result;
         """
         return driver.execute_script(script, element)
-
-
-def get_page_content(url: str, view="desktop"):
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        if view == "mobile":
-            page.set_viewport_size({"width": 375, "height": 812})
-        else:
-            page.set_viewport_size({"width": 1280, "height": 720})
-        page.goto(url)
-        content = page.content()
-        browser.close()
-    return content
 
 
 # ------------------ Public API ------------------
