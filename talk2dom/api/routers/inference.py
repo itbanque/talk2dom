@@ -66,7 +66,9 @@ def locate(
             logger.info(
                 f"Location verified: type: {selector_type}, value: {selector_value}"
             )
-            action_type, action_value = action.split(":")
+            action_type, action_value = (
+                action.split(":") if action and action.find(":") >= 0 else ("", "")
+            )
             return LocatorResponse(
                 action_type=action_type,
                 action_value=action_value,
@@ -159,7 +161,9 @@ def locate_playground(
             logger.info(
                 f"Location verified: type: {selector_type}, value: {selector_value}"
             )
-            action_type, action_value = action.split(":")
+            action_type, action_value = (
+                action.split(":") if action and action.find(":") >= 0 else ("", "")
+            )
             return LocatorResponse(
                 action_type=action,
                 action_value=action_value,
