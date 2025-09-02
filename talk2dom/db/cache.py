@@ -16,7 +16,7 @@ def compute_locator_id(
 ) -> str:
     if project_id is None:
         project_id = ""
-    raw = (instruction.strip() + html_id + project_id.strip()).encode("utf-8")
+    raw = (instruction.lower().strip() + html_id + project_id.strip()).encode("utf-8")
     uuid = hashlib.sha256(raw).hexdigest()
     logger.debug(
         f"Computing locator ID for instruction: {instruction[:50]}... and html: {html_id}, url: {url}, UUID: {uuid}"
