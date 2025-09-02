@@ -1,0 +1,41 @@
+[tool.poetry]
+name = "talk2dom"
+version = "0.1.0"
+description = ""
+authors = ["itbanque <contact@itbanque.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+loguru = "^0.7.3"
+sqlalchemy = "^2.0.43"
+authlib = "^1.6.3"
+starlette = "^0.47.3"
+fastapi = "^0.116.1"
+stripe = "^12.5.0"
+slowapi = "^0.1.9"
+dotenv = "^0.9.9"
+langchain = "^0.3.27"
+langfuse = "^3.3.4"
+uvicorn = "^0.35.0"
+sendgrid = "^6.12.4"
+psycopg2-binary = "^2.9.10"
+pydantic = {extras = ["email"], version = "^2.11.7"}
+bcrypt = "^4.3.0"
+itsdangerous = "^2.2.0"
+jinja2 = "^3.1.6"
+bs4 = "^0.0.2"
+lxml = "^6.0.1"
+sentry-sdk = "^2.35.2"
+langchain-google-genai = "^2.1.10"
+langchain-openai = "^0.3.32"
+httpx = {extras = ["http2"], version = "^0.28.1"}
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+black = "^25.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

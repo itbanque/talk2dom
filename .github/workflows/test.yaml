@@ -19,18 +19,19 @@ jobs:
         - name: Setup Python
           uses: actions/setup-python@v5
           with:
-            python-version: "3.11"
+            python-version: "3.12"
             cache: "pip"
+        - name: Install Poetry
+          run: |
+            pip install poetry
         - name: Install Dependencies
           run: |
-            pip install ruff
-            pip install -r requirements.txt
+            poetry install --with dev --no-ansi
         - name: Lint Checks
           run: |
-            ruff check ./talk2dom
-            ruff format --check ./talk2dom
+            poetry run ruff check ./talk2dom
+            poetry run ruff format --check ./talk2dom
         - name: Run Unittest
           run: |
-            pip install pytest
             export PYTHONPATH=$(pwd)
-            pytest tests
+            poetry run pytest tests
