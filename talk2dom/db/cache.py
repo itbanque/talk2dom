@@ -6,6 +6,65 @@ from datetime import datetime
 import hashlib
 from loguru import logger
 from typing import Optional
+import os
+import redis  # type: ignore
+
+_redis_client = None
+
+
+def _redis():
+    global _redis_client
+    if _redis_client is not None:
+        return _redis_client
+    url = (
+        os.getenv("T2D_REDIS_URL")
+        or os.getenv("REDIS_URL")
+        or "redis://localhost:6379/0"
+    )
+    _redis_client = redis.from_url(url, decode_responses=True, socket_timeout=0.5)
+    return _redis_client
+
+
+# Redis cache settings
+_TTL_SECONDS = int(os.getenv("T2D_REDIS_TTL", "86400"))  # default 1 day
+_NS = os.getenv("T2D_REDIS_NS", "t2d:v1")
+
+
+def _locator_key(locator_id: str) -> str:
+    return f"{_NS}:loc:{locator_id}"
+
+
+def _redis_set_locator(
+    locator_id: str,
+    selector_type: Optional[str],
+    selector_value: Optional[str],
+    action: Optional[str],
+) -> None:
+    r = _redis()
+    logger.debug(f"Redis set locator {locator_id}")
+    # Use a compact hash to avoid JSON overhead
+    mapping = {
+        "t": selector_type or "",
+        "v": selector_value or "",
+        "a": action or "",
+    }
+    r.hset(_locator_key(locator_id), mapping=mapping)
+    if _TTL_SECONDS > 0:
+        r.expire(_locator_key(locator_id), _TTL_SECONDS)
+
+
+def _redis_get_locator(locator_id: str) -> tuple:
+    r = _redis()
+    data = r.hgetall(_locator_key(locator_id))
+    logger.debug(f"Redis get locator {locator_id}")
+    if not data:
+        return None, None, None
+    t = data.get("t") or None
+    v = data.get("v") or None
+    a = data.get("a") or None
+    if not (t or v or a):
+        return None, None, None
+    return t, v, a
 
 
 def compute_locator_id(
@@ -33,21 +92,28 @@ def get_cached_locator(
     if SessionLocal is None:
         return None, None, None
 
-    html_id = hashlib.sha256(url.encode("utf-8")).hexdigest()
+    src = (url or "").strip() or (html or "")
+    html_id = hashlib.sha256(src.encode("utf-8")).hexdigest()
     locator_id = compute_locator_id(instruction, html_id, url, project_id)
-    session = SessionLocal()
 
+    # Try Redis first
+    t, v, a = _redis_get_locator(locator_id)
+    if t or v or a:
+        logger.debug(f"Redis hit for locator ID: {locator_id}")
+        return t, v, a
+
+    session = SessionLocal()
     try:
         row = session.query(UILocatorCache).filter_by(id=locator_id).first()
-        if row:
-            logger.debug(f"Cache hit for locator ID: {locator_id}")
-        else:
-            logger.debug(f"Cache miss for locator ID: {locator_id}")
-        return (
-            (row.selector_type, row.selector_value, row.action)
-            if row
-            else (None, None, None)
+        if not row:
+            logger.debug(f"DB miss for locator ID: {locator_id}")
+            return None, None, None
+        logger.debug(f"DB hit for locator ID: {locator_id}")
+        # Backfill Redis for subsequent lookups
+        _redis_set_locator(
+            locator_id, row.selector_type, row.selector_value, row.action
         )
+        return row.selector_type, row.selector_value, row.action
     finally:
         session.close()
 
@@ -88,8 +154,8 @@ def save_locator(
     if SessionLocal is None:
         return None
 
-    # html_id = hashlib.sha256(html_backbone.encode("utf-8")).hexdigest()
-    html_id = hashlib.sha256(url.encode("utf-8")).hexdigest()
+    src = (url or "").strip() or (html_backbone or "").strip() or (html or "")
+    html_id = hashlib.sha256(src.encode("utf-8")).hexdigest()
     locator_id = compute_locator_id(instruction, html_id, url, project_id)
     session = SessionLocal()
 
@@ -135,4 +201,6 @@ def save_locator(
         logger.error(f"Error saving locator: {e}")
         return False
     finally:
+        # Write-through cache so reads don't have to hit DB
+        _redis_set_locator(locator_id, selector_type, selector_value, action)
         session.close()

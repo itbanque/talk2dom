@@ -31,6 +31,7 @@ langchain-google-genai = "^2.1.10"
 langchain-openai = "^0.3.32"
 httpx = {extras = ["http2"], version = "^0.28.1"}
 alembic = "^1.16.5"
+redis = "^6.4.0"
 
 
 [tool.poetry.group.dev.dependencies]
