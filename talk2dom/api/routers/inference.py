@@ -46,7 +46,7 @@ def locate(
     if not html:
         raise Exception("html is empty")
     try:
-        structure_html = clean_html_keep_structure_only(html)
+        # structure_html = clean_html_keep_structure_only(html)
         cleaned_html = clean_html(html)
         if cleaned_html is None:
             raise Exception(
@@ -59,7 +59,7 @@ def locate(
 
     request.state.call_llm = False
     selector_type, selector_value, action = get_cached_locator(
-        req.user_instruction, structure_html, req.url, project_id
+        req.user_instruction, "", req.url, project_id
     )
     if selector_type and selector_value:
         if verifier.verify(selector_type, selector_value):
