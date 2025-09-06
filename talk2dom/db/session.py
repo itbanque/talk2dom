@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import Session
+from loguru import logger
 import os
 
 DB_URI = os.environ.get("TALK2DOM_DB_URI", None)
@@ -16,6 +17,7 @@ if DB_URI:
 def get_db() -> Session:
     db = SessionLocal()
     try:
+        logger.debug("Trying to connect to DB")
         yield db
     finally:
         db.close()

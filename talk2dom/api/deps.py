@@ -51,7 +51,7 @@ async def get_api_key_user(
     user = db.query(User).filter(User.api_keys.any(key=api_key)).first()
     if not user:
         raise HTTPException(status_code=403, detail="Invalid API Key")
-
+    logger.debug(f"User {user.id} has API Key {api_key}")
     return user
 
 
@@ -68,7 +68,7 @@ def get_api_key_id(
     key_obj = db.query(APIKey).filter(APIKey.key == api_key).first()
     if not key_obj:
         raise HTTPException(status_code=403, detail="Invalid API Key")
-
+    logger.debug(f"User {key_obj.id} has API Key {api_key}")
     return str(key_obj.id)
 
 
@@ -316,7 +316,7 @@ async def get_current_project_id(
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-
+    logger.debug(f"Get project ID: {project.id}")
     return project_id
 
 
