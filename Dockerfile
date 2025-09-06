@@ -26,7 +26,7 @@ COPY pyproject.toml poetry.lock* ./
 
 RUN poetry install --no-ansi --only main --no-root
 
-COPY . .
+COPY ./talk2dom ./talk2dom
 
 EXPOSE 8000
 

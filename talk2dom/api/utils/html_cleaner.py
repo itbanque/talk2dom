@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup, Comment
 from urllib.parse import urljoin
 
+from loguru import logger
+
 
 def clean_html_keep_structure_only(raw_html: str) -> str:
     soup = BeautifulSoup(raw_html, "html.parser")
@@ -28,7 +30,7 @@ def clean_html_keep_structure_only(raw_html: str) -> str:
     for element in soup.find_all(string=True):
         if element.parent.name not in ["script", "style"]:
             element.extract()
-
+    logger.debug("Keep structured html")
     return str(soup).replace("\n", "").replace("\t", "").strip()
 
 
@@ -60,6 +62,7 @@ def clean_html(raw_html: str) -> str:
         body = soup
 
     cleaned = str(body).replace("\n", "").replace("\r", "").replace("\t", "")
+    logger.debug("Cleaned html")
     return cleaned.strip()
 
 
