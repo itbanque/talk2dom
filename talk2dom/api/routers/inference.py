@@ -1,6 +1,7 @@
 import os
 
 from fastapi import APIRouter, Depends, Request
+from urllib.parse import urlparse
 
 from talk2dom.core import call_selector_llm, retry
 from talk2dom.db.cache import get_cached_locator, save_locator
@@ -58,8 +59,11 @@ def locate(
     verifier = SelectorValidator(html)
 
     request.state.call_llm = False
+    parsed = urlparse(req.url)
+    url_path = parsed.path.rstrip("/")
+
     selector_type, selector_value, action = get_cached_locator(
-        req.user_instruction, structure_html, req.url, project_id
+        req.user_instruction, structure_html, url_path, project_id
     )
     if selector_type and selector_value:
         if verifier.verify(selector_type, selector_value):
@@ -110,7 +114,7 @@ def locate(
             selector_type,
             selector_value,
             action=":".join((action_type, action_value)),
-            url=req.url,
+            url=url_path,
             project_id=project_id,
             html=cleaned_html,
         )
@@ -152,9 +156,12 @@ def locate_playground(
         logger.error(f"Failed to clean html: {err}")
         raise
 
+    parsed = urlparse(req.url)
+    url_path = parsed.path.rstrip("/")
+
     request.state.call_llm = False
     selector_type, selector_value, action = get_cached_locator(
-        req.user_instruction, structure_html, req.url
+        req.user_instruction, structure_html, url_path
     )
     if selector_type and selector_value:
         if verifier.verify(selector_type, selector_value):
@@ -204,7 +211,7 @@ def locate_playground(
             selector_type,
             selector_value,
             action=":".join((action_type, action_value)),
-            url=req.url,
+            url=url_path,
             html=cleaned_html,
         )
         return LocatorResponse(
