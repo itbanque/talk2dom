@@ -1,7 +1,7 @@
 import os
 
 from fastapi import APIRouter, Depends, Request
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 from talk2dom.core import call_selector_llm, retry
 from talk2dom.db.cache import get_cached_locator, save_locator
@@ -60,7 +60,8 @@ def locate(
 
     request.state.call_llm = False
     parsed = urlparse(req.url)
-    url_path = parsed.path.rstrip("/")
+    parsed = parsed._replace(query="")
+    url_path = urlunparse(parsed)
 
     selector_type, selector_value, action = get_cached_locator(
         req.user_instruction, structure_html, url_path, project_id
@@ -157,7 +158,8 @@ def locate_playground(
         raise
 
     parsed = urlparse(req.url)
-    url_path = parsed.path.rstrip("/")
+    parsed = parsed._replace(query="")
+    url_path = urlunparse(parsed)
 
     request.state.call_llm = False
     selector_type, selector_value, action = get_cached_locator(
