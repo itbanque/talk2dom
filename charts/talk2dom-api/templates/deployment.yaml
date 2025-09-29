@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: talk2dom-api
-          image: jianit/talk2dom-api:latest
+          image: itbanque/talk2dom-api:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
