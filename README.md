@@ -5,6 +5,7 @@
 ![Stars](https://img.shields.io/github/stars/itbanque/talk2dom?style=social)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 ![CI](https://github.com/itbanque/talk2dom/actions/workflows/test.yaml/badge.svg)
+[![Join our Discord](https://img.shields.io/badge/Discord-Join%20Us-5865F2?logo=discord&logoColor=white)](https://discord.gg/8EU6QxhB)
 
 **talk2dom** is a focused utility that solves one of the hardest problems in browser automation and UI testing:
 
@@ -57,6 +58,15 @@ Think about it:
 ## 🌐 Hosted API Service
 
 `talk2dom` powers a **production-ready hosted service** — making it easy to integrate into your automation agents, testing pipelines, and internal tools.
+
+---
+
+## 💬 Community
+
+Join our community on Discord to get support, share ideas, and connect with other users:  
+👉 [Join Talk2Dom Discord](https://discord.gg/8EU6QxhB)
+
+---
 
 ### Getting Started
 
