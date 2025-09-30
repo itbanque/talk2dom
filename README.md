@@ -3,7 +3,7 @@
 > 📚 [English](./README.md) | [中文](./README.zh.md)
 
 ![Stars](https://img.shields.io/github/stars/itbanque/talk2dom?style=social)
-[![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 ![CI](https://github.com/itbanque/talk2dom/actions/workflows/test.yaml/badge.svg)
 
 **talk2dom** is a focused utility that solves one of the hardest problems in browser automation and UI testing:
