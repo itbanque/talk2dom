@@ -103,14 +103,7 @@ For detailed deployment instructions, contact us via GitHub discussions.
 
 ## 📄 License
 
-This project is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/).
-
-You may:
-- ✅ Use, modify, and share the code for personal or research purposes
-- ❌ Not use it in commercial applications without permission
-- ✅ You must give appropriate credit, provide a link to the license, and indicate if changes were made.
-
-📩 For commercial licensing, please contact: contact@itbanque.com
+This project is licensed under the [GNU AGPL v3](https://www.gnu.org/licenses/agpl-3.0).
 
 ---
 
