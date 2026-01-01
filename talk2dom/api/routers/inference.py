@@ -174,7 +174,7 @@ def locate_playground(
                 action.split(":") if action and action.find(":") >= 0 else ("", "")
             )
             return LocatorResponse(
-                action_type=action,
+                action_type=action_type,
                 action_value=action_value,
                 selector_type=selector_type,
                 selector_value=selector_value,
