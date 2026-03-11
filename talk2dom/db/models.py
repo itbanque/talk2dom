@@ -174,6 +174,12 @@ class APIUsage(Base):
         Index("ix_api_usage_user_id_request_time", "user_id", "request_time"),
         Index("ix_api_usage_project_id", "project_id"),
         Index("ix_api_usage_project_id_request_time", "project_id", "request_time"),
+        Index(
+            "ix_api_usage_project_id_status_code_request_time",
+            "project_id",
+            "status_code",
+            "request_time",
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -214,6 +220,10 @@ class Project(Base):
 
 class ProjectMembership(Base):
     __tablename__ = "project_memberships"
+    __table_args__ = (
+        Index("ix_project_memberships_user_id_project_id", "user_id", "project_id"),
+        Index("ix_project_memberships_project_id_user_id", "project_id", "user_id"),
+    )
 
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID, ForeignKey("users.id"))
@@ -226,6 +236,11 @@ class ProjectMembership(Base):
 
 class ProjectInvite(Base):
     __tablename__ = "project_invites"
+    __table_args__ = (
+        Index("ix_project_invites_project_id", "project_id"),
+        Index("ix_project_invites_project_id_email", "project_id", "email"),
+        Index("ix_project_invites_email_accepted", "email", "accepted"),
+    )
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"))
     email = Column(String, nullable=False, index=True)
