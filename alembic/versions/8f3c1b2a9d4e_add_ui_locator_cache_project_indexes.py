@@ -19,14 +19,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_ui_locator_cache_project_id ON public.ui_locator_cache USING btree (project_id)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_ui_locator_cache_project_id_created_at ON public.ui_locator_cache USING btree (project_id, created_at)"
-    )
+    with op.get_context().autocommit_block():
+        op.execute(
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_ui_locator_cache_project_id ON public.ui_locator_cache USING btree (project_id)"
+        )
+        op.execute(
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_ui_locator_cache_project_id_created_at ON public.ui_locator_cache USING btree (project_id, created_at)"
+        )
 
 
 def downgrade() -> None:
-    op.execute("DROP INDEX IF EXISTS public.ix_ui_locator_cache_project_id_created_at")
-    op.execute("DROP INDEX IF EXISTS public.ix_ui_locator_cache_project_id")
+    with op.get_context().autocommit_block():
+        op.execute(
+            "DROP INDEX CONCURRENTLY IF EXISTS public.ix_ui_locator_cache_project_id_created_at"
+        )
+        op.execute(
+            "DROP INDEX CONCURRENTLY IF EXISTS public.ix_ui_locator_cache_project_id"
+        )
