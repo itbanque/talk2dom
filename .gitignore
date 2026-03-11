@@ -129,6 +129,8 @@ celerybeat.pid
 
 # Environments
 .env
+.env*
+!.env.sample
 .venv
 env/
 venv/
@@ -172,3 +174,13 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# macOS
+.DS_Store
+
+# JetBrains IDE
+.idea/
