@@ -3,6 +3,7 @@ from sqlalchemy import (
     Integer,
     JSON,
     ForeignKey,
+    Index,
     String,
     Text,
     TIMESTAMP,
@@ -168,6 +169,12 @@ class User(Base):
 
 class APIUsage(Base):
     __tablename__ = "api_usage"
+    __table_args__ = (
+        Index("ix_api_usage_user_id", "user_id"),
+        Index("ix_api_usage_user_id_request_time", "user_id", "request_time"),
+        Index("ix_api_usage_project_id", "project_id"),
+        Index("ix_api_usage_project_id_request_time", "project_id", "request_time"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
@@ -232,6 +239,14 @@ class ProjectInvite(Base):
 
 class UILocatorCache(Base):
     __tablename__ = "ui_locator_cache"
+    __table_args__ = (
+        Index("ix_ui_locator_cache_project_id", "project_id"),
+        Index(
+            "ix_ui_locator_cache_project_id_created_at",
+            "project_id",
+            "created_at",
+        ),
+    )
 
     id = Column(String, primary_key=True)
     url = Column(String, nullable=False)
