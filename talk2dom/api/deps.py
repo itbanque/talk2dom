@@ -141,6 +141,14 @@ def track_api_usage():
 
             if status_code == 200:
                 consume_credit(db, project_owner, amount=1)
+                (
+                    db.query(Project)
+                    .filter(Project.id == project_id)
+                    .update(
+                        {Project.api_call_count: Project.api_call_count + 1},
+                        synchronize_session=False,
+                    )
+                )
             db.commit()
             try:
                 ga.send(

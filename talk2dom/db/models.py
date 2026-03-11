@@ -1,6 +1,7 @@
 from sqlalchemy import (
     Column,
     Integer,
+    BigInteger,
     JSON,
     ForeignKey,
     Index,
@@ -210,6 +211,7 @@ class Project(Base):
     name = Column(String, nullable=False)
     owner_id = Column(UUID, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
+    api_call_count = Column(BigInteger, nullable=False, default=0, server_default="0")
 
     memberships = relationship("ProjectMembership", back_populates="project")
     locator_cache = relationship(

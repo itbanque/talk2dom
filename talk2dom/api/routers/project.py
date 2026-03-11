@@ -203,14 +203,6 @@ def list_user_projects(
             .filter(ProjectMembership.project_id == project.id)
             .count()
         )
-        api_calls = (
-            db.query(func.count(APIUsage.id))
-            .filter(
-                APIUsage.project_id == project.id,
-                APIUsage.status_code == 200,
-            )
-            .scalar()
-        )
         owner = db.query(User).filter_by(id=project.owner_id).first()
         setattr(project, "owner_email", owner.email)
         if member_count > member_limit.get(owner.plan, 0):
@@ -218,7 +210,7 @@ def list_user_projects(
         else:
             setattr(project, "is_active", True)
         setattr(project, "member_count", member_count)
-        setattr(project, "api_calls", api_calls)
+        setattr(project, "api_calls", int(project.api_call_count or 0))
         items.append(project)
 
     return {"items": items, "has_next": has_next}
