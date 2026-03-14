@@ -127,7 +127,7 @@ def call_selector_llm(
     try:
         with langfuse.start_as_current_observation(as_type="span", name="call_selector_llm"):
             # Propagate user_id to all observations
-            with propagate_attributes(user_id=metadata.get("user_id", "unknown_user")):
+            with propagate_attributes(user_id=metadata.get("email", "unknown_user")):
                 # Pass handler to the chain invocation
                 response = chain.invoke(
                     query, config={"callbacks": [langfuse_handler], "metadata": metadata}
