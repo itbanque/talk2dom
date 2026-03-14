@@ -87,7 +87,7 @@ def locate(
         PROVIDER_NAME,
         req.conversation_history,
         metadata={
-            "user_id": user.id,
+            "langfuse_user_id": user.email,
             "project_id": project_id,
             "email": user.email,
         },
@@ -186,7 +186,7 @@ def locate_playground(
         PROVIDER_NAME,
         req.conversation_history,
         metadata={
-            "user_id": user.id,
+            "langfuse_user_id": user.email,
             "email": user.email,
         },
     )
