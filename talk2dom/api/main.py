@@ -28,7 +28,6 @@ load_dotenv()
 init_sentry()
 
 app = FastAPI(title="Talk2DOM API")
-app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SECRET_KEY"))
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     SessionMiddleware,
