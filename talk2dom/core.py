@@ -127,7 +127,7 @@ def call_selector_llm(
     try:
         response = chain.invoke(
             query, config={"callbacks": [langfuse_handler], "metadata": metadata}
-            )[0]
+        )[0]
         return response
     except Exception as e:
         logger.error(f"Query failed: {e}")

@@ -25,6 +25,7 @@
 - Add or update tests for new behavior, especially API routes and DB logic.
 - Any new function or library must include a unit test.
 - Run targeted tests when possible (e.g., `poetry run pytest tests/api`).
+- After any code change, run `poetry run ruff check ./talk2dom` and `poetry run ruff format --check ./talk2dom`.
 
 ## Commit & Pull Request Guidelines
 - Commit history shows short, plain summaries (e.g., “fix bug”, “add redis”); keep messages concise and imperative.
