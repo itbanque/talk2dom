@@ -187,52 +187,33 @@ def test_update_rejects_invalid_plan(client, db_session, test_user):
     assert test_user.plan == "free"
 
 
-def test_user_page_shows_usage_history(client, db_session, test_user):
-    project = Project(id=uuid.uuid4(), name="Demo Project", owner_id=test_user.id)
-    db_session.add(project)
-    base_time = datetime(2026, 7, 1, 12, 0, 0)
-    for i in range(30):
-        db_session.add(
-            APIUsage(
-                user_id=test_user.id,
-                project_id=project.id if i == 29 else None,
-                endpoint="/api/v1/inference/locator",
-                request_time=base_time + timedelta(minutes=i),
-                duration_ms=100 + i,
-                status_code=200 if i % 2 == 0 else 500,
-                call_llm=i % 2 == 0,
-                meta_data={
-                    "url": f"https://claude.ai/page-{i}",
-                    "user_instruction": f"locate button number {i}",
-                    "selector_type": "css selector",
-                    "selector_value": f"button#btn-{i}",
-                    "action_type": "click",
-                    "action_value": "",
-                    "cache_hit": i % 2 != 0,
-                },
+def test_user_page_shows_usage_chart(client, db_session, test_user):
+    now = datetime.utcnow()
+    for offset_days, count in [(0, 3), (5, 1), (40, 1)]:  # day 40 is out of window
+        for _ in range(count):
+            db_session.add(
+                APIUsage(
+                    user_id=test_user.id,
+                    endpoint="/api/v1/inference/locator",
+                    request_time=now - timedelta(days=offset_days),
+                    status_code=200,
+                    call_llm=True,
+                )
             )
-        )
     db_session.commit()
 
     login(client)
-    page1 = client.get(f"/admin/users/{test_user.id}")
-    assert page1.status_code == 200
-    # newest first: call 29 (with project) on page 1, oldest calls pushed to page 2
-    assert "locate button number 29" in page1.text
-    assert "https://claude.ai/page-29" in page1.text
-    assert "css selector=button#btn-29" in page1.text
-    assert "Demo Project" in page1.text
-    assert "locate button number 5" in page1.text
-    assert "locate button number 4 " not in page1.text
-
-    page2 = client.get(f"/admin/users/{test_user.id}", params={"upage": 2})
-    assert "locate button number 4" in page2.text
-    assert "locate button number 29" not in page2.text
+    page = client.get(f"/admin/users/{test_user.id}")
+    assert page.status_code == 200
+    assert "usage-chart" in page.text
+    # subtitle: 4 calls in window, 5 all-time
+    assert "last 30 days · 4 calls · 5 all-time" in page.text
+    # tooltip labels for the two in-window days
+    assert "· 3 calls" in page.text
+    assert "· 1 calls" in page.text
 
 
-def test_locator_call_records_meta_and_shows_in_admin(
-    client, db_session, test_user, monkeypatch
-):
+def test_locator_call_records_meta(client, db_session, test_user, monkeypatch):
     from types import SimpleNamespace
     from talk2dom.api.routers import inference
     from talk2dom.api.deps import get_current_user
@@ -281,103 +262,12 @@ def test_locator_call_records_meta_and_shows_in_admin(
 
     login(client)
     page = client.get(f"/admin/users/{test_user.id}")
+    assert "usage-chart" in page.text
+    assert "· 1 calls" in page.text  # today's call shows up in the chart
+    # the playground call appears under Located elements via usage meta
     assert "locate the + button" in page.text
-    assert "https://claude.ai/new" in page.text
     assert "css selector=button#plus" in page.text
-
-
-@pytest.fixture
-def usage_with_snapshot(db_session, test_user):
-    html_id = "a" * 64
-    db_session.add(
-        HTML(
-            id=html_id,
-            url="https://claude.ai/new",
-            backbone="<html><body><button id='plus'>+</button></body></html>",
-            row_html="<html><body><button id='plus'>+</button></body></html>",
-        )
-    )
-    usage = APIUsage(
-        user_id=test_user.id,
-        endpoint="/api/v1/inference/locator",
-        request_time=datetime(2026, 7, 1, 12, 0, 0),
-        status_code=200,
-        call_llm=True,
-        meta_data={
-            "url": "https://claude.ai/new",
-            "user_instruction": "locate the + button",
-            "html_id": html_id,
-            "selector_type": "css selector",
-            "selector_value": "button#plus",
-            "action_type": "click",
-            "action_value": "",
-            "cache_hit": False,
-        },
-    )
-    db_session.add(usage)
-    db_session.commit()
-    db_session.refresh(usage)
-    return usage
-
-
-def test_usage_snapshot_renders_page_with_highlight(client, usage_with_snapshot):
-    login(client)
-    resp = client.get(f"/admin/usage/{usage_with_snapshot.id}/snapshot")
-    assert resp.status_code == 200
-    assert resp.headers["content-security-policy"] == "sandbox allow-scripts"
-    # page snapshot, <base> for relative assets, and the highlight script with the locator
-    assert "<button id='plus'>+</button>" in resp.text
-    assert '<base href="https://claude.ai/new">' in resp.text
-    assert '"button#plus"' in resp.text
-    assert "scrollIntoView" in resp.text
-
-
-def test_usage_snapshot_without_html(client, db_session, test_user):
-    usage = APIUsage(
-        user_id=test_user.id,
-        endpoint="/api/v1/inference/locator",
-        status_code=200,
-        call_llm=False,
-    )
-    db_session.add(usage)
-    db_session.commit()
-    db_session.refresh(usage)
-
-    login(client)
-    resp = client.get(f"/admin/usage/{usage.id}/snapshot")
-    assert resp.status_code == 200
-    assert "No page snapshot available" in resp.text
-
-
-def test_usage_snapshot_requires_login(client, usage_with_snapshot):
-    resp = client.get(
-        f"/admin/usage/{usage_with_snapshot.id}/snapshot", follow_redirects=False
-    )
-    assert resp.status_code == 303
-
-
-def test_delete_usage_record(client, db_session, test_user, usage_with_snapshot):
-    login(client)
-    page = client.get(f"/admin/users/{test_user.id}")
-    csrf = re.search(r'name="csrf_token" value="([0-9a-f]+)"', page.text).group(1)
-
-    # wrong csrf rejected
-    resp = client.post(
-        f"/admin/usage/{usage_with_snapshot.id}/delete",
-        data={"csrf_token": "f" * 32},
-        follow_redirects=False,
-    )
-    assert resp.status_code == 403
-    assert db_session.query(APIUsage).count() == 1
-
-    resp = client.post(
-        f"/admin/usage/{usage_with_snapshot.id}/delete",
-        data={"csrf_token": csrf},
-        follow_redirects=False,
-    )
-    assert resp.status_code == 303
-    assert resp.headers["location"] == f"/admin/users/{test_user.id}"
-    assert db_session.query(APIUsage).count() == 0
+    assert "Playground" in page.text
 
 
 @pytest.fixture
@@ -424,6 +314,143 @@ def test_cache_snapshot_renders_with_highlight(client, cache_entry):
     assert resp.headers["content-security-policy"] == "sandbox allow-scripts"
     assert "<button id='voice'>Voice</button>" in resp.text
     assert '"button#voice"' in resp.text
+
+
+def test_located_elements_playground_and_project_filter(
+    client, db_session, test_user, cache_entry
+):
+    db_session.add(
+        HTML(
+            id="d" * 64,
+            url="https://x.dev/app",
+            backbone="<button id='go'>Go</button>",
+            row_html="<html><body><button id='go'>Go</button></body></html>",
+        )
+    )
+    db_session.add(
+        APIUsage(
+            user_id=test_user.id,
+            endpoint="/api/v1/inference/locator-playground",
+            request_time=datetime.utcnow(),
+            status_code=200,
+            call_llm=True,
+            meta_data={
+                "url": "https://x.dev/app",
+                "user_instruction": "locate the go button",
+                "html_id": "d" * 64,
+                "selector_type": "css selector",
+                "selector_value": "button#go",
+                "action_type": "",
+                "action_value": "",
+                "cache_hit": False,
+            },
+        )
+    )
+    db_session.commit()
+    login(client)
+
+    # no filter: both the playground call (usage meta) and the project cache entry
+    page = client.get(f"/admin/users/{test_user.id}")
+    assert "locate the go button" in page.text
+    assert "locate the voice mode button" in page.text
+    assert "Playground" in page.text
+
+    # playground only
+    page = client.get(f"/admin/users/{test_user.id}", params={"project": "none"})
+    assert "locate the go button" in page.text
+    assert "locate the voice mode button" not in page.text
+
+    # specific project only
+    page = client.get(
+        f"/admin/users/{test_user.id}",
+        params={"project": str(cache_entry.project_id)},
+    )
+    assert "locate the go button" not in page.text
+    assert "locate the voice mode button" in page.text
+
+
+def test_located_elements_dedup_cache_and_meta(db_session, test_user):
+    from talk2dom.api.routers.admin import _located_elements
+    from talk2dom.db.cache import compute_locator_id
+
+    project = Project(id=uuid.uuid4(), name="p1", owner_id=test_user.id)
+    db_session.add(project)
+    html_id = "e" * 64
+    loc_id = compute_locator_id("locate x", html_id, "https://a.dev/", str(project.id))
+    db_session.add(
+        UILocatorCache(
+            id=loc_id,
+            url="https://a.dev/",
+            user_instruction="locate x",
+            html_id=html_id,
+            selector_type="css selector",
+            selector_value="#x",
+            action="click:",
+            project_id=project.id,
+        )
+    )
+    db_session.add(
+        APIUsage(
+            user_id=test_user.id,
+            project_id=project.id,
+            endpoint="/api/v1/inference/locator",
+            request_time=datetime.utcnow(),
+            status_code=200,
+            call_llm=True,
+            meta_data={
+                "url": "https://a.dev/",
+                "user_instruction": "locate x",
+                "html_id": html_id,
+                "selector_type": "css selector",
+                "selector_value": "#x",
+            },
+        )
+    )
+    db_session.commit()
+
+    rows = _located_elements(db_session, test_user, "", {project.id: "p1"})
+    assert len(rows) == 1  # the call collapses into its cache entry
+    assert rows[0]["snapshot_url"].startswith("/admin/cache/")
+
+
+def test_usage_snapshot_from_meta(client, db_session, test_user):
+    html_id = "a" * 64
+    db_session.add(
+        HTML(
+            id=html_id,
+            url="https://claude.ai/new",
+            backbone="<button id='plus'>+</button>",
+            row_html="<html><body><button id='plus'>+</button></body></html>",
+        )
+    )
+    usage = APIUsage(
+        user_id=test_user.id,
+        endpoint="/api/v1/inference/locator-playground",
+        status_code=200,
+        call_llm=True,
+        meta_data={
+            "url": "https://claude.ai/new",
+            "user_instruction": "locate the + button",
+            "html_id": html_id,
+            "selector_type": "css selector",
+            "selector_value": "button#plus",
+        },
+    )
+    db_session.add(usage)
+    db_session.commit()
+    db_session.refresh(usage)
+
+    login(client)
+    resp = client.get(f"/admin/usage/{usage.id}/snapshot")
+    assert resp.status_code == 200
+    assert resp.headers["content-security-policy"] == "sandbox allow-scripts"
+    assert "<button id='plus'>+</button>" in resp.text
+    assert '"button#plus"' in resp.text
+
+
+def test_cache_snapshot_requires_login(client, cache_entry):
+    resp = client.get(f"/admin/cache/{cache_entry.id}/snapshot", follow_redirects=False)
+    assert resp.status_code == 303
 
 
 def test_delete_cache_entry(client, db_session, test_user, cache_entry):

@@ -2,6 +2,7 @@ import json
 import os
 import secrets
 import uuid
+from collections import Counter
 from datetime import datetime, timedelta
 from html import escape as html_escape
 from typing import Optional
@@ -10,11 +11,11 @@ from urllib.parse import parse_qs
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import false, func, or_
+from sqlalchemy.orm import Session
 
 from talk2dom.api.limiter import limiter
-from talk2dom.db.cache import invalidate_locator_cache
+from talk2dom.db.cache import compute_locator_id, invalidate_locator_cache
 from talk2dom.db.models import (
     APIKey,
     APIUsage,
@@ -229,15 +230,86 @@ def _build_snapshot_doc(row_html: str, meta: dict) -> str:
     return base_tag + row_html + script
 
 
-def _get_usage_or_404(db: Session, usage_id: str) -> APIUsage:
-    try:
-        uid = uuid.UUID(usage_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Usage record not found")
-    usage = db.query(APIUsage).filter(APIUsage.id == uid).first()
-    if not usage:
-        raise HTTPException(status_code=404, detail="Usage record not found")
-    return usage
+def _nice_ceiling(v: int) -> int:
+    if v <= 0:
+        return 1
+    magnitude = 1
+    while True:
+        for step in (1, 2, 5):
+            if step * magnitude >= v:
+                return step * magnitude
+        magnitude *= 10
+
+
+def _usage_chart_svg(daily: list) -> str:
+    """Render daily call counts as a column chart (inline SVG, light surface)."""
+    W, H = 920, 220
+    left, right, top, bottom = 44, 10, 18, 26
+    plot_w, plot_h = W - left - right, H - top - bottom
+    n = len(daily)
+    band = plot_w / n
+    bar_w = min(24.0, band - 4)
+    max_val = max((v for _, v in daily), default=0)
+    nice = _nice_ceiling(max_val)
+
+    parts = [
+        f'<svg class="usage-chart" viewBox="0 0 {W} {H}" role="img" '
+        f'aria-label="Daily API calls, last {n} days" '
+        'style="width:100%;height:auto;display:block;">',
+        "<style>"
+        ".usage-chart .slot .bar{fill:#2a78d6;}"
+        ".usage-chart .slot:hover .bar{fill:#1c5cab;}"
+        ".usage-chart .slot .band{fill:transparent;}"
+        ".usage-chart .slot:hover .band{fill:rgba(42,120,214,0.08);}"
+        ".usage-chart text{font:11px system-ui,sans-serif;fill:#898781;"
+        "font-variant-numeric:tabular-nums;}"
+        "</style>",
+    ]
+
+    # hairline gridlines + y ticks at clean numbers (skip a non-integer midpoint)
+    ticks = [0, nice] if nice % 2 else [0, nice // 2, nice]
+    for val in ticks:
+        y = top + plot_h - plot_h * val / nice
+        parts.append(
+            f'<line x1="{left}" y1="{y:.1f}" x2="{W - right}" y2="{y:.1f}" '
+            f'stroke="{"#c3c2b7" if val == 0 else "#e1e0d9"}" stroke-width="1"/>'
+            f'<text x="{left - 6}" y="{y + 4:.1f}" text-anchor="end">{val}</text>'
+        )
+
+    peak_idx = max(range(n), key=lambda i: daily[i][1], default=0) if max_val else None
+    for i, (day, val) in enumerate(daily):
+        x = left + i * band
+        label = f"{day.strftime('%b %d').replace(' 0', ' ')} · {val} calls"
+        parts.append(f'<g class="slot" data-label="{html_escape(label, quote=True)}">')
+        if val > 0:
+            h = plot_h * val / nice
+            bx = x + (band - bar_w) / 2
+            by = top + plot_h - h
+            r = min(4.0, h, bar_w / 2)
+            parts.append(
+                f'<path class="bar" d="M{bx:.1f},{by + h:.1f} V{by + r:.1f} '
+                f"Q{bx:.1f},{by:.1f} {bx + r:.1f},{by:.1f} H{bx + bar_w - r:.1f} "
+                f'Q{bx + bar_w:.1f},{by:.1f} {bx + bar_w:.1f},{by + r:.1f} V{by + h:.1f} Z"/>'
+            )
+            if i == peak_idx:
+                parts.append(
+                    f'<text x="{bx + bar_w / 2:.1f}" y="{by - 5:.1f}" '
+                    f'text-anchor="middle" style="fill:#52514e;">{val}</text>'
+                )
+        parts.append(
+            f'<rect class="band" x="{x:.1f}" y="{top}" width="{band:.1f}" '
+            f'height="{plot_h}"><title>{html_escape(label)}</title></rect></g>'
+        )
+
+    for i in range(0, n, 7):
+        x = left + i * band + band / 2
+        day_label = daily[i][0].strftime("%b %d").replace(" 0", " ")
+        parts.append(
+            f'<text x="{x:.1f}" y="{H - 8}" text-anchor="middle">{day_label}</text>'
+        )
+
+    parts.append("</svg>")
+    return "".join(parts)
 
 
 def _snapshot_response(db: Session, html_id: Optional[str], meta: dict) -> HTMLResponse:
@@ -254,6 +326,24 @@ def _snapshot_response(db: Session, html_id: Optional[str], meta: dict) -> HTMLR
     return HTMLResponse(_build_snapshot_doc(html_row.row_html, meta), headers=headers)
 
 
+def _get_cache_or_404(db: Session, cache_id: str) -> UILocatorCache:
+    row = db.query(UILocatorCache).filter(UILocatorCache.id == cache_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Locator not found")
+    return row
+
+
+def _get_usage_or_404(db: Session, usage_id: str) -> APIUsage:
+    try:
+        uid = uuid.UUID(usage_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Usage record not found")
+    usage = db.query(APIUsage).filter(APIUsage.id == uid).first()
+    if not usage:
+        raise HTTPException(status_code=404, detail="Usage record not found")
+    return usage
+
+
 @router.get("/usage/{usage_id}/snapshot")
 def usage_snapshot(
     usage_id: str,
@@ -266,11 +356,21 @@ def usage_snapshot(
     return _snapshot_response(db, meta.get("html_id"), meta)
 
 
-def _get_cache_or_404(db: Session, cache_id: str) -> UILocatorCache:
-    row = db.query(UILocatorCache).filter(UILocatorCache.id == cache_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Locator not found")
-    return row
+@router.post("/usage/{usage_id}/delete")
+async def delete_usage(
+    usage_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    form = await _parse_form(request)
+    _check_csrf(request, form.get("csrf_token", ""))
+    usage = _get_usage_or_404(db, usage_id)
+    user_id = usage.user_id
+    db.delete(usage)
+    db.commit()
+    logger.info(f"[admin:{actor}] deleted usage record {usage_id} of user {user_id}")
+    return RedirectResponse(url=f"/admin/users/{user_id}", status_code=303)
 
 
 @router.get("/cache/{cache_id}/snapshot")
@@ -310,23 +410,6 @@ async def delete_cache_entry(
         return RedirectResponse(url="/admin/", status_code=303)
 
 
-@router.post("/usage/{usage_id}/delete")
-async def delete_usage(
-    usage_id: str,
-    request: Request,
-    db: Session = Depends(get_db),
-    actor: str = Depends(require_admin),
-):
-    form = await _parse_form(request)
-    _check_csrf(request, form.get("csrf_token", ""))
-    usage = _get_usage_or_404(db, usage_id)
-    user_id = usage.user_id
-    db.delete(usage)
-    db.commit()
-    logger.info(f"[admin:{actor}] deleted usage record {usage_id} of user {user_id}")
-    return RedirectResponse(url=f"/admin/users/{user_id}", status_code=303)
-
-
 def _get_user_or_404(db: Session, user_id: str) -> User:
     try:
         uid = uuid.UUID(user_id)
@@ -338,6 +421,105 @@ def _get_user_or_404(db: Session, user_id: str) -> User:
     return user
 
 
+def _fmt_action(action_type: str, action_value: str) -> str:
+    if not action_type:
+        return ""
+    return f"{action_type}: {action_value}" if action_value else action_type
+
+
+# meta 来源最多回看这么多条 usage;更早的重复定位基本都已沉淀为 cache 条目
+LOCATED_USAGE_SCAN_LIMIT = 1000
+
+
+def _located_elements(
+    db: Session, user: User, project_filter: str, project_by_id: dict
+):
+    """该用户定位过的元素:项目缓存条目 ∪ usage meta_data(含 playground),按 locator 指纹去重."""
+    rows = []
+
+    if project_filter == "none":
+        cache_project_ids = []  # playground 调用不产生按项目归属的缓存
+    elif project_filter:
+        cache_project_ids = [pid for pid in project_by_id if str(pid) == project_filter]
+    else:
+        cache_project_ids = list(project_by_id)
+
+    if cache_project_ids:
+        for c in (
+            db.query(UILocatorCache)
+            .filter(UILocatorCache.project_id.in_(cache_project_ids))
+            .all()
+        ):
+            action_type, _, action_value = (c.action or "").partition(":")
+            rows.append(
+                {
+                    "key": c.id,
+                    "time": c.updated_at,
+                    "instruction": c.user_instruction,
+                    "url": c.url,
+                    "selector_type": c.selector_type,
+                    "selector_value": c.selector_value,
+                    "action": _fmt_action(action_type, action_value),
+                    "project": project_by_id.get(c.project_id, "—"),
+                    "snapshot_url": f"/admin/cache/{c.id}/snapshot",
+                    "delete_url": f"/admin/cache/{c.id}/delete",
+                }
+            )
+
+    usage_query = db.query(APIUsage).filter(
+        APIUsage.user_id == user.id, APIUsage.meta_data.isnot(None)
+    )
+    if project_filter == "none":
+        usage_query = usage_query.filter(APIUsage.project_id.is_(None))
+    elif project_filter:
+        try:
+            usage_query = usage_query.filter(
+                APIUsage.project_id == uuid.UUID(project_filter)
+            )
+        except ValueError:
+            usage_query = usage_query.filter(false())
+    recent = (
+        usage_query.order_by(APIUsage.request_time.desc())
+        .limit(LOCATED_USAGE_SCAN_LIMIT)
+        .all()
+    )
+
+    seen = {r["key"] for r in rows}
+    for u in recent:
+        m = u.meta_data or {}
+        if not m.get("selector_value"):
+            continue
+        key = compute_locator_id(
+            m.get("user_instruction", ""),
+            m.get("html_id", ""),
+            m.get("url"),
+            str(u.project_id) if u.project_id else "",
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append(
+            {
+                "key": key,
+                "time": u.request_time,
+                "instruction": m.get("user_instruction", ""),
+                "url": m.get("url", ""),
+                "selector_type": m.get("selector_type", ""),
+                "selector_value": m.get("selector_value", ""),
+                "action": _fmt_action(
+                    m.get("action_type", ""), m.get("action_value", "")
+                ),
+                "project": project_by_id.get(u.project_id)
+                or ("Playground" if not u.project_id else str(u.project_id)[:8]),
+                "snapshot_url": f"/admin/usage/{u.id}/snapshot",
+                "delete_url": f"/admin/usage/{u.id}/delete",
+            }
+        )
+
+    rows.sort(key=lambda r: r["time"] or datetime.min, reverse=True)
+    return rows
+
+
 @router.get("/users/{user_id}")
 def edit_user_page(
     user_id: str,
@@ -346,12 +528,27 @@ def edit_user_page(
     actor: str = Depends(require_admin),
     saved: int = Query(default=0),
     error: str = Query(default=""),
-    upage: int = Query(default=1, ge=1),
     cpage: int = Query(default=1, ge=1),
+    project: str = Query(default=""),
 ):
     user = _get_user_or_404(db, user_id)
-    month_ago = datetime.utcnow() - timedelta(days=30)
     usage_query = db.query(APIUsage).filter(APIUsage.user_id == user.id)
+
+    # 最近 30 天按日聚合(在 Python 里做,SQLite/Postgres 通用)
+    today = datetime.utcnow().date()
+    start_date = today - timedelta(days=29)
+    times = usage_query.with_entities(APIUsage.request_time).filter(
+        APIUsage.request_time >= datetime.combine(start_date, datetime.min.time())
+    )
+    day_counts = Counter(t[0].date() for t in times if t[0])
+    daily = [
+        (
+            start_date + timedelta(days=i),
+            day_counts.get(start_date + timedelta(days=i), 0),
+        )
+        for i in range(30)
+    ]
+
     stats = {
         "projects_owned": db.query(func.count(Project.id))
         .filter(Project.owner_id == user.id)
@@ -360,36 +557,26 @@ def edit_user_page(
         .filter(APIKey.user_id == user.id)
         .scalar(),
         "usage_total": usage_query.count(),
-        "usage_30d": usage_query.filter(APIUsage.request_time >= month_ago).count(),
+        "usage_30d": sum(day_counts.values()),
     }
-    usages = (
-        usage_query.options(joinedload(APIUsage.project))
-        .order_by(APIUsage.request_time.desc())
-        .offset((upage - 1) * USAGE_PAGE_SIZE)
-        .limit(USAGE_PAGE_SIZE)
-        .all()
-    )
 
-    # 用户所属项目(owner + member)下缓存的 locator:前端 Detail/Delete 列表就是这份数据
-    project_ids = {
-        row[0] for row in db.query(Project.id).filter(Project.owner_id == user.id).all()
-    } | {
+    # 用户所属项目(owner + member),用于项目筛选下拉和缓存条目归属
+    member_ids = [
         row[0]
         for row in db.query(ProjectMembership.project_id)
         .filter(ProjectMembership.user_id == user.id)
         .all()
-    }
-    cache_query = db.query(UILocatorCache).filter(
-        UILocatorCache.project_id.in_(project_ids)
-    )
-    cache_total = cache_query.count()
-    cache_entries = (
-        cache_query.options(joinedload(UILocatorCache.project))
-        .order_by(UILocatorCache.updated_at.desc())
-        .offset((cpage - 1) * USAGE_PAGE_SIZE)
-        .limit(USAGE_PAGE_SIZE)
+    ]
+    projects = (
+        db.query(Project)
+        .filter(or_(Project.owner_id == user.id, Project.id.in_(member_ids)))
         .all()
     )
+    project_by_id = {p.id: p.name for p in projects}
+
+    located = _located_elements(db, user, project, project_by_id)
+    located_total = len(located)
+    located_page = located[(cpage - 1) * USAGE_PAGE_SIZE : cpage * USAGE_PAGE_SIZE]
 
     return templates.TemplateResponse(
         "admin/user_edit.html",
@@ -398,13 +585,13 @@ def edit_user_page(
             "actor": actor,
             "user": user,
             "stats": stats,
-            "usages": usages,
-            "upage": upage,
-            "usage_has_next": upage * USAGE_PAGE_SIZE < stats["usage_total"],
-            "cache_entries": cache_entries,
-            "cache_total": cache_total,
+            "usage_chart": _usage_chart_svg(daily),
+            "located": located_page,
+            "located_total": located_total,
+            "projects": projects,
+            "project_filter": project,
             "cpage": cpage,
-            "cache_has_next": cpage * USAGE_PAGE_SIZE < cache_total,
+            "located_has_next": cpage * USAGE_PAGE_SIZE < located_total,
             "plan_choices": PLAN_CHOICES,
             "csrf_token": _csrf_token(request),
             "saved": saved,

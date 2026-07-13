@@ -70,66 +70,19 @@
 </div>
 
 <div class="card">
-  <h3 style="margin-top: 0;">Located elements <span class="muted" style="font-weight: normal;">({{ cache_total }} cached locators across the user's projects)</span></h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Instruction</th>
-        <th>Page URL</th>
-        <th>Locator</th>
-        <th>Action</th>
-        <th>Project</th>
-        <th>Updated</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for c in cache_entries %}
-      <tr>
-        <td class="trunc" title="{{ c.user_instruction }}">{{ c.user_instruction }}</td>
-        <td class="trunc" title="{{ c.url }}">{% if c.url %}<a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">{{ c.url }}</a>{% else %}—{% endif %}</td>
-        <td class="trunc" style="max-width: 300px;" title="{{ c.selector_type }}={{ c.selector_value }}"><code>{{ c.selector_type }}={{ c.selector_value }}</code></td>
-        <td>{{ c.action if c.action and c.action != ":" else "—" }}</td>
-        <td>{{ c.project.name if c.project else "—" }}</td>
-        <td class="muted" style="white-space: nowrap;">{{ c.updated_at.strftime("%Y-%m-%d %H:%M") if c.updated_at else "—" }}</td>
-        <td style="white-space: nowrap;">
-          <button type="button" class="linkbtn" onclick="openDetail(this)"
-                  data-snapshot-url="/admin/cache/{{ c.id }}/snapshot"
-                  data-instruction="{{ c.user_instruction }}"
-                  data-url="{{ c.url or '' }}"
-                  data-locator="{{ c.selector_type }}={{ c.selector_value }}"
-                  data-action="{{ c.action if c.action and c.action != ':' else '' }}">Detail</button>
-          <form method="post" action="/admin/cache/{{ c.id }}/delete" style="display: inline; margin-left: 0.5rem;"
-                onsubmit="return confirm('Delete this cached locator?');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-            <input type="hidden" name="user_id" value="{{ user.id }}" />
-            <button type="submit" class="linkbtn danger">Delete</button>
-          </form>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="7" class="muted">No cached locators for this user's projects.</td></tr>
+  <h3 style="margin-top: 0;">Located elements <span class="muted" style="font-weight: normal;">({{ located_total }})</span></h3>
+
+  <form method="get" action="/admin/users/{{ user.id }}" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+    <select name="project">
+      <option value="">All projects</option>
+      <option value="none" {% if project_filter == "none" %}selected{% endif %}>Playground (no project)</option>
+      {% for p in projects %}
+      <option value="{{ p.id }}" {% if project_filter == p.id | string %}selected{% endif %}>{{ p.name }}</option>
       {% endfor %}
-    </tbody>
-  </table>
+    </select>
+    <button class="btn" type="submit">Filter</button>
+  </form>
 
-  <div style="margin-top: 1rem; display: flex; justify-content: space-between;">
-    <span>
-      {% if cpage > 1 %}
-      <a href="/admin/users/{{ user.id }}?cpage={{ cpage - 1 }}">← Prev</a>
-      {% endif %}
-    </span>
-    <span class="muted">page {{ cpage }}</span>
-    <span>
-      {% if cache_has_next %}
-      <a href="/admin/users/{{ user.id }}?cpage={{ cpage + 1 }}">Next →</a>
-      {% endif %}
-    </span>
-  </div>
-</div>
-
-<div class="card">
-  <h3 style="margin-top: 0;">Usage history <span class="muted" style="font-weight: normal;">({{ stats.usage_total }} calls)</span></h3>
   <table>
     <thead>
       <tr>
@@ -137,59 +90,62 @@
         <th>Instruction</th>
         <th>Page URL</th>
         <th>Locator</th>
+        <th>Action</th>
         <th>Project</th>
-        <th>Source</th>
-        <th>Status</th>
         <th>Actions</th>
       </tr>
     </thead>
     <tbody>
-      {% for u in usages %}
-      {% set m = u.meta_data or {} %}
+      {% for c in located %}
       <tr>
-        <td class="muted" style="white-space: nowrap;" title="{{ u.endpoint }}">{{ u.request_time.strftime("%Y-%m-%d %H:%M:%S") if u.request_time else "—" }}</td>
-        <td class="trunc" title="{{ m.user_instruction or '' }}">{{ m.user_instruction or "—" }}</td>
-        <td class="trunc" title="{{ m.url or '' }}">{% if m.url %}<a href="{{ m.url }}" target="_blank" rel="noopener noreferrer">{{ m.url }}</a>{% else %}—{% endif %}</td>
-        <td class="trunc" style="max-width: 300px;" title="{{ m.selector_type }}={{ m.selector_value }}">
-          {% if m.selector_value %}<code>{{ m.selector_type }}={{ m.selector_value }}</code>{% else %}—{% endif %}
-        </td>
-        <td>{{ u.project.name if u.project else "—" }}</td>
-        <td><span class="badge">{{ "cache" if m.cache_hit else ("llm" if u.call_llm else "—") }}</span></td>
-        <td><span class="badge {{ 'yes' if u.status_code == 200 else 'no' }}">{{ u.status_code or "—" }}</span></td>
+        <td class="muted" style="white-space: nowrap;">{{ c.time.strftime("%Y-%m-%d %H:%M") if c.time else "—" }}</td>
+        <td class="trunc" title="{{ c.instruction }}">{{ c.instruction }}</td>
+        <td class="trunc" title="{{ c.url or '' }}">{% if c.url %}<a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">{{ c.url }}</a>{% else %}—{% endif %}</td>
+        <td class="trunc" style="max-width: 300px;" title="{{ c.selector_type }}={{ c.selector_value }}"><code>{{ c.selector_type }}={{ c.selector_value }}</code></td>
+        <td>{{ c.action or "—" }}</td>
+        <td>{{ c.project }}</td>
         <td style="white-space: nowrap;">
           <button type="button" class="linkbtn" onclick="openDetail(this)"
-                  data-snapshot-url="/admin/usage/{{ u.id }}/snapshot"
-                  data-instruction="{{ m.user_instruction or '' }}"
-                  data-url="{{ m.url or '' }}"
-                  data-locator="{% if m.selector_value %}{{ m.selector_type }}={{ m.selector_value }}{% endif %}"
-                  data-action="{% if m.action_type %}{{ m.action_type }}{% if m.action_value %}: {{ m.action_value }}{% endif %}{% endif %}">Detail</button>
-          <form method="post" action="/admin/usage/{{ u.id }}/delete" style="display: inline; margin-left: 0.5rem;"
-                onsubmit="return confirm('Delete this usage record?');">
+                  data-snapshot-url="{{ c.snapshot_url }}"
+                  data-instruction="{{ c.instruction }}"
+                  data-url="{{ c.url or '' }}"
+                  data-locator="{{ c.selector_type }}={{ c.selector_value }}"
+                  data-action="{{ c.action }}">Detail</button>
+          <form method="post" action="{{ c.delete_url }}" style="display: inline; margin-left: 0.5rem;"
+                onsubmit="return confirm('Delete this located element record?');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <input type="hidden" name="user_id" value="{{ user.id }}" />
             <button type="submit" class="linkbtn danger">Delete</button>
           </form>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="9" class="muted">No usage recorded.</td></tr>
+      <tr><td colspan="7" class="muted">No located elements for this user{% if project_filter %} with this filter{% endif %}.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 
   <div style="margin-top: 1rem; display: flex; justify-content: space-between;">
     <span>
-      {% if upage > 1 %}
-      <a href="/admin/users/{{ user.id }}?upage={{ upage - 1 }}">← Prev</a>
+      {% if cpage > 1 %}
+      <a href="/admin/users/{{ user.id }}?project={{ project_filter | urlencode }}&cpage={{ cpage - 1 }}">← Prev</a>
       {% endif %}
     </span>
-    <span class="muted">page {{ upage }}</span>
+    <span class="muted">page {{ cpage }}</span>
     <span>
-      {% if usage_has_next %}
-      <a href="/admin/users/{{ user.id }}?upage={{ upage + 1 }}">Next →</a>
+      {% if located_has_next %}
+      <a href="/admin/users/{{ user.id }}?project={{ project_filter | urlencode }}&cpage={{ cpage + 1 }}">Next →</a>
       {% endif %}
     </span>
   </div>
 </div>
+
+<div class="card">
+  <h3 style="margin-top: 0;">API calls <span class="muted" style="font-weight: normal;">last 30 days · {{ stats.usage_30d }} calls · {{ stats.usage_total }} all-time</span></h3>
+  {{ usage_chart | safe }}
+</div>
+
+<div id="chart-tooltip" style="display: none; position: fixed; z-index: 200; background: #0f172a; color: #f8fafc; font-size: 0.75rem; padding: 0.3rem 0.6rem; border-radius: 6px; pointer-events: none; white-space: nowrap;"></div>
 
 <div id="detail-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 100; padding: 1.5rem;" onclick="if (event.target === this) closeDetail();">
   <div style="background: white; border-radius: 8px; max-width: 1100px; height: 100%; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden;">
@@ -224,6 +180,19 @@
   }
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") closeDetail();
+  });
+
+  var chartTip = document.getElementById("chart-tooltip");
+  document.querySelectorAll(".usage-chart .slot").forEach(function (slot) {
+    slot.addEventListener("mousemove", function (e) {
+      chartTip.textContent = slot.dataset.label;
+      chartTip.style.left = e.clientX + 12 + "px";
+      chartTip.style.top = e.clientY - 28 + "px";
+      chartTip.style.display = "block";
+    });
+    slot.addEventListener("mouseleave", function () {
+      chartTip.style.display = "none";
+    });
   });
 </script>
 {% endblock %}
