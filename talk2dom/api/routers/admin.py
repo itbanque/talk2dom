@@ -21,6 +21,7 @@ from talk2dom.db.models import (
     APIUsage,
     HTML,
     Project,
+    ProjectInvite,
     ProjectMembership,
     UILocatorCache,
     User,
@@ -574,6 +575,37 @@ def edit_user_page(
     )
     project_by_id = {p.id: p.name for p in projects}
 
+    api_keys = (
+        db.query(APIKey)
+        .filter(APIKey.user_id == user.id)
+        .order_by(APIKey.created_at.desc())
+        .all()
+    )
+    members_by_project = {}
+    invites_by_project = {}
+    if project_by_id:
+        member_rows = (
+            db.query(ProjectMembership, User)
+            .join(User, ProjectMembership.user_id == User.id)
+            .filter(ProjectMembership.project_id.in_(project_by_id))
+            .all()
+        )
+        for membership, member in member_rows:
+            members_by_project.setdefault(membership.project_id, []).append(
+                {"id": membership.id, "email": member.email, "role": membership.role}
+            )
+        for invite in (
+            db.query(ProjectInvite)
+            .filter(
+                ProjectInvite.project_id.in_(project_by_id),
+                ProjectInvite.accepted.is_(False),
+            )
+            .all()
+        ):
+            invites_by_project.setdefault(invite.project_id, []).append(
+                {"id": invite.id, "email": invite.email}
+            )
+
     located = _located_elements(db, user, project, project_by_id)
     located_total = len(located)
     located_page = located[(cpage - 1) * USAGE_PAGE_SIZE : cpage * USAGE_PAGE_SIZE]
@@ -589,6 +621,9 @@ def edit_user_page(
             "located": located_page,
             "located_total": located_total,
             "projects": projects,
+            "api_keys": api_keys,
+            "members_by_project": members_by_project,
+            "invites_by_project": invites_by_project,
             "project_filter": project,
             "cpage": cpage,
             "located_has_next": cpage * USAGE_PAGE_SIZE < located_total,
@@ -598,6 +633,204 @@ def edit_user_page(
             "error": error,
         },
     )
+
+
+@router.post("/users/{user_id}/projects")
+async def admin_create_project(
+    user_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    form = await _parse_form(request)
+    _check_csrf(request, form.get("csrf_token", ""))
+    user = _get_user_or_404(db, user_id)
+    name = form.get("name", "").strip()
+    if not name:
+        return RedirectResponse(
+            url=f"/admin/users/{user_id}?error=Project+name+required", status_code=303
+        )
+    project = Project(name=name, owner_id=user.id)
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    db.add(ProjectMembership(user_id=user.id, project_id=project.id, role="owner"))
+    db.commit()
+    logger.info(
+        f"[admin:{actor}] created project {project.id} ({name}) for user {user.email}"
+    )
+    return RedirectResponse(url=f"/admin/users/{user_id}?saved=1", status_code=303)
+
+
+@router.post("/users/{user_id}/api-keys")
+async def admin_create_api_key(
+    user_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    form = await _parse_form(request)
+    _check_csrf(request, form.get("csrf_token", ""))
+    user = _get_user_or_404(db, user_id)
+    name = form.get("name", "").strip() or None
+    api_key = APIKey(user_id=user.id, key=secrets.token_hex(32), name=name)
+    db.add(api_key)
+    db.commit()
+    logger.info(
+        f"[admin:{actor}] created API key {api_key.id} ({name}) for user {user.email}"
+    )
+    return RedirectResponse(url=f"/admin/users/{user_id}?saved=1", status_code=303)
+
+
+@router.post("/users/{user_id}/invite")
+async def admin_invite_member(
+    user_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    form = await _parse_form(request)
+    _check_csrf(request, form.get("csrf_token", ""))
+    user = _get_user_or_404(db, user_id)
+
+    email = form.get("email", "").strip().lower()
+    if not email or "@" not in email:
+        return RedirectResponse(
+            url=f"/admin/users/{user_id}?error=Valid+email+required", status_code=303
+        )
+    try:
+        project_id = uuid.UUID(form.get("project_id", ""))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid project")
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    already_member = (
+        db.query(ProjectMembership)
+        .filter(
+            ProjectMembership.project_id == project_id,
+            ProjectMembership.user.has(email=email),
+        )
+        .first()
+    )
+    if already_member:
+        return RedirectResponse(
+            url=f"/admin/users/{user_id}?error=User+is+already+a+member",
+            status_code=303,
+        )
+    pending = (
+        db.query(ProjectInvite)
+        .filter(
+            ProjectInvite.project_id == project_id,
+            ProjectInvite.email == email,
+            ProjectInvite.accepted.is_(False),
+        )
+        .first()
+    )
+    if pending:
+        return RedirectResponse(
+            url=f"/admin/users/{user_id}?error=User+already+invited", status_code=303
+        )
+
+    invite = ProjectInvite(
+        project_id=project_id, email=email, invited_by_user_id=user.id
+    )
+    invitee = db.query(User).filter(User.email == email).first()
+    if invitee:
+        # 已注册用户直接加入,不必等下次登录
+        db.add(
+            ProjectMembership(user_id=invitee.id, project_id=project_id, role="member")
+        )
+        invite.accepted = True
+        invite.invited_user_id = invitee.id
+    db.add(invite)
+    db.commit()
+    logger.info(
+        f"[admin:{actor}] invited {email} to project {project_id} "
+        f"({'joined directly' if invitee else 'pending signup'})"
+    )
+    return RedirectResponse(url=f"/admin/users/{user_id}?saved=1", status_code=303)
+
+
+@router.post("/memberships/{membership_id}/delete")
+async def admin_remove_member(
+    membership_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    form = await _parse_form(request)
+    _check_csrf(request, form.get("csrf_token", ""))
+    back = form.get("user_id", "")
+    try:
+        mid = uuid.UUID(membership_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Membership not found")
+    membership = db.query(ProjectMembership).filter(ProjectMembership.id == mid).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="Membership not found")
+    project = db.query(Project).filter(Project.id == membership.project_id).first()
+    if project and membership.user_id == project.owner_id:
+        return RedirectResponse(
+            url=f"/admin/users/{back}?error=Owner+cannot+be+removed", status_code=303
+        )
+    db.query(ProjectInvite).filter_by(
+        invited_user_id=membership.user_id, project_id=membership.project_id
+    ).delete()
+    db.delete(membership)
+    db.commit()
+    logger.info(
+        f"[admin:{actor}] removed member {membership.user_id} "
+        f"from project {membership.project_id}"
+    )
+    return RedirectResponse(url=f"/admin/users/{back}?saved=1", status_code=303)
+
+
+@router.post("/invites/{invite_id}/delete")
+async def admin_revoke_invite(
+    invite_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    form = await _parse_form(request)
+    _check_csrf(request, form.get("csrf_token", ""))
+    back = form.get("user_id", "")
+    try:
+        iid = uuid.UUID(invite_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    invite = db.query(ProjectInvite).filter(ProjectInvite.id == iid).first()
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    db.delete(invite)
+    db.commit()
+    logger.info(f"[admin:{actor}] revoked invite {invite_id} ({invite.email})")
+    return RedirectResponse(url=f"/admin/users/{back}?saved=1", status_code=303)
+
+
+@router.post("/api-keys/{key_id}/delete")
+async def admin_delete_api_key(
+    key_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    form = await _parse_form(request)
+    _check_csrf(request, form.get("csrf_token", ""))
+    back = form.get("user_id", "")
+    try:
+        kid = uuid.UUID(key_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="API key not found")
+    key = db.query(APIKey).filter(APIKey.id == kid).first()
+    if not key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    db.delete(key)
+    db.commit()
+    logger.info(f"[admin:{actor}] deleted API key {key_id} of user {key.user_id}")
+    return RedirectResponse(url=f"/admin/users/{back}?saved=1", status_code=303)
 
 
 @router.post("/users/{user_id}")

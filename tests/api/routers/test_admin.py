@@ -18,7 +18,17 @@ from datetime import datetime, timedelta
 from talk2dom.api.main import app
 from talk2dom.api.limiter import limiter
 from talk2dom.api.routers.admin import require_admin
-from talk2dom.db.models import APIUsage, Base, HTML, Project, UILocatorCache, User
+from talk2dom.db.models import (
+    APIKey,
+    APIUsage,
+    Base,
+    HTML,
+    Project,
+    ProjectInvite,
+    ProjectMembership,
+    UILocatorCache,
+    User,
+)
 from talk2dom.api.deps import get_db
 
 ADMIN_TOKEN = "test-admin-token"
@@ -466,6 +476,200 @@ def test_delete_cache_entry(client, db_session, test_user, cache_entry):
     assert resp.status_code == 303
     assert resp.headers["location"] == f"/admin/users/{test_user.id}"
     assert db_session.query(UILocatorCache).count() == 0
+
+
+def _csrf(client, user_id):
+    page = client.get(f"/admin/users/{user_id}")
+    return re.search(r'name="csrf_token" value="([0-9a-f]+)"', page.text).group(1)
+
+
+def test_admin_create_project_and_api_key(client, db_session, test_user):
+    login(client)
+    csrf = _csrf(client, test_user.id)
+
+    resp = client.post(
+        f"/admin/users/{test_user.id}/projects",
+        data={"csrf_token": csrf, "name": "growth"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    project = db_session.query(Project).filter_by(owner_id=test_user.id).one()
+    assert project.name == "growth"
+    membership = (
+        db_session.query(ProjectMembership)
+        .filter_by(project_id=project.id, user_id=test_user.id)
+        .one()
+    )
+    assert membership.role == "owner"
+
+    resp = client.post(
+        f"/admin/users/{test_user.id}/api-keys",
+        data={"csrf_token": csrf, "name": "ci-bot"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    key = db_session.query(APIKey).filter_by(user_id=test_user.id).one()
+    assert key.name == "ci-bot"
+    assert len(key.key) == 64
+
+    page = client.get(f"/admin/users/{test_user.id}")
+    assert "growth" in page.text
+    assert key.key in page.text
+
+
+def test_admin_create_project_requires_name(client, db_session, test_user):
+    login(client)
+    csrf = _csrf(client, test_user.id)
+    resp = client.post(
+        f"/admin/users/{test_user.id}/projects",
+        data={"csrf_token": csrf, "name": "   "},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert "error=" in resp.headers["location"]
+    assert db_session.query(Project).count() == 0
+
+
+def test_admin_invite_existing_user_joins_directly(client, db_session, test_user):
+    project = Project(id=uuid.uuid4(), name="team", owner_id=test_user.id)
+    other = User(
+        id=uuid.uuid4(),
+        provider_user_id="other-provider-id",
+        email="other@example.com",
+        is_active=True,
+    )
+    db_session.add_all(
+        [
+            project,
+            other,
+            ProjectMembership(
+                user_id=test_user.id, project_id=project.id, role="owner"
+            ),
+        ]
+    )
+    db_session.commit()
+    login(client)
+    csrf = _csrf(client, test_user.id)
+
+    invite_data = {
+        "csrf_token": csrf,
+        "project_id": str(project.id),
+        "email": "other@example.com",
+    }
+    resp = client.post(
+        f"/admin/users/{test_user.id}/invite",
+        data=invite_data,
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert "saved=1" in resp.headers["location"]
+    membership = (
+        db_session.query(ProjectMembership)
+        .filter_by(project_id=project.id, user_id=other.id)
+        .one()
+    )
+    assert membership.role == "member"
+    invite = db_session.query(ProjectInvite).filter_by(project_id=project.id).one()
+    assert invite.accepted is True
+
+    # inviting again → already a member
+    resp = client.post(
+        f"/admin/users/{test_user.id}/invite",
+        data=invite_data,
+        follow_redirects=False,
+    )
+    assert "error=" in resp.headers["location"]
+
+    # member shows on the page and can be removed
+    page = client.get(f"/admin/users/{test_user.id}")
+    assert "other@example.com" in page.text
+    resp = client.post(
+        f"/admin/memberships/{membership.id}/delete",
+        data={"csrf_token": csrf, "user_id": str(test_user.id)},
+        follow_redirects=False,
+    )
+    assert "saved=1" in resp.headers["location"]
+    assert (
+        db_session.query(ProjectMembership)
+        .filter_by(project_id=project.id, user_id=other.id)
+        .count()
+        == 0
+    )
+
+    # owner membership is protected
+    owner_membership = (
+        db_session.query(ProjectMembership)
+        .filter_by(project_id=project.id, user_id=test_user.id)
+        .one()
+    )
+    resp = client.post(
+        f"/admin/memberships/{owner_membership.id}/delete",
+        data={"csrf_token": csrf, "user_id": str(test_user.id)},
+        follow_redirects=False,
+    )
+    assert "error=" in resp.headers["location"]
+    assert (
+        db_session.query(ProjectMembership).filter_by(id=owner_membership.id).count()
+        == 1
+    )
+
+
+def test_admin_invite_unregistered_email_pending_and_revoke(
+    client, db_session, test_user
+):
+    project = Project(id=uuid.uuid4(), name="team", owner_id=test_user.id)
+    db_session.add_all(
+        [
+            project,
+            ProjectMembership(
+                user_id=test_user.id, project_id=project.id, role="owner"
+            ),
+        ]
+    )
+    db_session.commit()
+    login(client)
+    csrf = _csrf(client, test_user.id)
+
+    resp = client.post(
+        f"/admin/users/{test_user.id}/invite",
+        data={
+            "csrf_token": csrf,
+            "project_id": str(project.id),
+            "email": "newbie@example.com",
+        },
+        follow_redirects=False,
+    )
+    assert "saved=1" in resp.headers["location"]
+    invite = db_session.query(ProjectInvite).filter_by(email="newbie@example.com").one()
+    assert invite.accepted is False
+
+    page = client.get(f"/admin/users/{test_user.id}")
+    assert "newbie@example.com" in page.text  # pending invites column
+
+    resp = client.post(
+        f"/admin/invites/{invite.id}/delete",
+        data={"csrf_token": csrf, "user_id": str(test_user.id)},
+        follow_redirects=False,
+    )
+    assert "saved=1" in resp.headers["location"]
+    assert db_session.query(ProjectInvite).count() == 0
+
+
+def test_admin_delete_api_key(client, db_session, test_user):
+    key = APIKey(user_id=test_user.id, key="k" * 64, name="old-key")
+    db_session.add(key)
+    db_session.commit()
+    db_session.refresh(key)
+    login(client)
+    csrf = _csrf(client, test_user.id)
+
+    resp = client.post(
+        f"/admin/api-keys/{key.id}/delete",
+        data={"csrf_token": csrf, "user_id": str(test_user.id)},
+        follow_redirects=False,
+    )
+    assert "saved=1" in resp.headers["location"]
+    assert db_session.query(APIKey).count() == 0
 
 
 def _session_request(session: dict) -> Request:

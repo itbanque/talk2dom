@@ -141,6 +141,122 @@
 </div>
 
 <div class="card">
+  <h3 style="margin-top: 0;">Projects <span class="muted" style="font-weight: normal;">({{ projects | length }})</span></h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Members</th>
+        <th>Pending invites</th>
+        <th>API calls</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in projects %}
+      <tr>
+        <td title="{{ p.id }}">{{ p.name }}</td>
+        <td><span class="badge">{{ "owner" if p.owner_id == user.id else "member" }}</span></td>
+        <td>
+          {% for m in members_by_project.get(p.id, []) %}
+          <span style="white-space: nowrap;">{{ m.email }} <span class="muted">({{ m.role }})</span>
+            {% if m.email != user.email %}
+            <form method="post" action="/admin/memberships/{{ m.id }}/delete" style="display: inline;"
+                  onsubmit="return confirm('Remove {{ m.email }} from {{ p.name }}?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <input type="hidden" name="user_id" value="{{ user.id }}" />
+              <button type="submit" class="linkbtn danger" title="Remove member">×</button>
+            </form>
+            {% endif %}</span>{% if not loop.last %}, {% endif %}
+          {% else %}
+          <span class="muted">—</span>
+          {% endfor %}
+        </td>
+        <td>
+          {% for inv in invites_by_project.get(p.id, []) %}
+          <span style="white-space: nowrap;">{{ inv.email }}
+            <form method="post" action="/admin/invites/{{ inv.id }}/delete" style="display: inline;"
+                  onsubmit="return confirm('Revoke invite for {{ inv.email }}?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <input type="hidden" name="user_id" value="{{ user.id }}" />
+              <button type="submit" class="linkbtn danger" title="Revoke invite">×</button>
+            </form></span>{% if not loop.last %}, {% endif %}
+          {% else %}
+          <span class="muted">—</span>
+          {% endfor %}
+        </td>
+        <td>{{ p.api_call_count }}</td>
+        <td class="muted">{{ p.created_at.strftime("%Y-%m-%d") if p.created_at else "—" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">No projects.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 1rem;">
+    <form method="post" action="/admin/users/{{ user.id }}/projects" style="display: flex; gap: 0.5rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="text" name="name" placeholder="New project name…" required />
+      <button class="btn" type="submit">Create project</button>
+    </form>
+    {% if projects %}
+    <form method="post" action="/admin/users/{{ user.id }}/invite" style="display: flex; gap: 0.5rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <select name="project_id" required>
+        {% for p in projects %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" name="email" placeholder="member@example.com" required />
+      <button class="btn" type="submit">Invite member</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top: 0;">API keys <span class="muted" style="font-weight: normal;">({{ api_keys | length }})</span></h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Key</th>
+        <th>Active</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for k in api_keys %}
+      <tr>
+        <td>{{ k.name or "—" }}</td>
+        <td class="trunc" style="max-width: 320px;" title="{{ k.key }}"><code>{{ k.key }}</code></td>
+        <td><span class="badge {{ 'yes' if k.is_active else 'no' }}">{{ "yes" if k.is_active else "no" }}</span></td>
+        <td class="muted">{{ k.created_at.strftime("%Y-%m-%d %H:%M") if k.created_at else "—" }}</td>
+        <td>
+          <form method="post" action="/admin/api-keys/{{ k.id }}/delete" style="display: inline;"
+                onsubmit="return confirm('Delete this API key? Clients using it will stop working.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <input type="hidden" name="user_id" value="{{ user.id }}" />
+            <button type="submit" class="linkbtn danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">No API keys.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/admin/users/{{ user.id }}/api-keys" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="text" name="name" placeholder="Key name (e.g. CI bot)…" />
+    <button class="btn" type="submit">Create API key</button>
+  </form>
+</div>
+
+<div class="card">
   <h3 style="margin-top: 0;">API calls <span class="muted" style="font-weight: normal;">last 30 days · {{ stats.usage_30d }} calls · {{ stats.usage_total }} all-time</span></h3>
   {{ usage_chart | safe }}
 </div>
