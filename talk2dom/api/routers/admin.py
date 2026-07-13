@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from talk2dom.api.limiter import limiter
 from talk2dom.db.models import APIKey, APIUsage, Project, User
@@ -22,6 +22,7 @@ templates = Jinja2Templates(directory="talk2dom/templates")
 
 PLAN_CHOICES = ["free", "developer", "pro", "enterprise"]
 PAGE_SIZE = 50
+USAGE_PAGE_SIZE = 25
 
 
 async def _parse_form(request: Request) -> dict:
@@ -180,9 +181,11 @@ def edit_user_page(
     actor: str = Depends(require_admin),
     saved: int = Query(default=0),
     error: str = Query(default=""),
+    upage: int = Query(default=1, ge=1),
 ):
     user = _get_user_or_404(db, user_id)
     month_ago = datetime.utcnow() - timedelta(days=30)
+    usage_query = db.query(APIUsage).filter(APIUsage.user_id == user.id)
     stats = {
         "projects_owned": db.query(func.count(Project.id))
         .filter(Project.owner_id == user.id)
@@ -190,10 +193,16 @@ def edit_user_page(
         "api_keys": db.query(func.count(APIKey.id))
         .filter(APIKey.user_id == user.id)
         .scalar(),
-        "usage_30d": db.query(func.count(APIUsage.id))
-        .filter(APIUsage.user_id == user.id, APIUsage.request_time >= month_ago)
-        .scalar(),
+        "usage_total": usage_query.count(),
+        "usage_30d": usage_query.filter(APIUsage.request_time >= month_ago).count(),
     }
+    usages = (
+        usage_query.options(joinedload(APIUsage.project))
+        .order_by(APIUsage.request_time.desc())
+        .offset((upage - 1) * USAGE_PAGE_SIZE)
+        .limit(USAGE_PAGE_SIZE)
+        .all()
+    )
     return templates.TemplateResponse(
         "admin/user_edit.html",
         {
@@ -201,6 +210,9 @@ def edit_user_page(
             "actor": actor,
             "user": user,
             "stats": stats,
+            "usages": usages,
+            "upage": upage,
+            "usage_has_next": upage * USAGE_PAGE_SIZE < stats["usage_total"],
             "plan_choices": PLAN_CHOICES,
             "csrf_token": _csrf_token(request),
             "saved": saved,

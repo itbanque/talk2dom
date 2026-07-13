@@ -64,7 +64,54 @@
       <tr><th>Projects owned</th><td>{{ stats.projects_owned }}</td></tr>
       <tr><th>API keys</th><td>{{ stats.api_keys }}</td></tr>
       <tr><th>API calls (30d)</th><td>{{ stats.usage_30d }}</td></tr>
+      <tr><th>API calls (total)</th><td>{{ stats.usage_total }}</td></tr>
     </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top: 0;">Usage history <span class="muted" style="font-weight: normal;">({{ stats.usage_total }} calls)</span></h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Endpoint</th>
+        <th>Project</th>
+        <th>Status</th>
+        <th>Duration</th>
+        <th>LLM</th>
+        <th>Tokens in / out</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in usages %}
+      <tr>
+        <td class="muted" style="white-space: nowrap;">{{ u.request_time.strftime("%Y-%m-%d %H:%M:%S") if u.request_time else "—" }}</td>
+        <td>{{ u.endpoint }}</td>
+        <td>{{ u.project.name if u.project else "—" }}</td>
+        <td><span class="badge {{ 'yes' if u.status_code == 200 else 'no' }}">{{ u.status_code or "—" }}</span></td>
+        <td>{{ u.duration_ms ~ " ms" if u.duration_ms is not none else "—" }}</td>
+        <td>{{ "yes" if u.call_llm else "—" }}</td>
+        <td>{{ u.input_tokens if u.input_tokens is not none else "—" }} / {{ u.output_tokens if u.output_tokens is not none else "—" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">No usage recorded.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="margin-top: 1rem; display: flex; justify-content: space-between;">
+    <span>
+      {% if upage > 1 %}
+      <a href="/admin/users/{{ user.id }}?upage={{ upage - 1 }}">← Prev</a>
+      {% endif %}
+    </span>
+    <span class="muted">page {{ upage }}</span>
+    <span>
+      {% if usage_has_next %}
+      <a href="/admin/users/{{ user.id }}?upage={{ upage + 1 }}">Next →</a>
+      {% endif %}
+    </span>
   </div>
 </div>
 {% endblock %}

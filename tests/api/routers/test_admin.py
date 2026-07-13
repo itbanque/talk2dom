@@ -13,9 +13,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from starlette.requests import Request
 
+from datetime import datetime, timedelta
+
 from talk2dom.api.main import app
 from talk2dom.api.routers.admin import require_admin
-from talk2dom.db.models import Base, User
+from talk2dom.db.models import APIUsage, Base, Project, User
 from talk2dom.api.deps import get_db
 
 ADMIN_TOKEN = "test-admin-token"
@@ -181,6 +183,38 @@ def test_update_rejects_invalid_plan(client, db_session, test_user):
     assert "error=" in resp.headers["location"]
     db_session.refresh(test_user)
     assert test_user.plan == "free"
+
+
+def test_user_page_shows_usage_history(client, db_session, test_user):
+    project = Project(id=uuid.uuid4(), name="Demo Project", owner_id=test_user.id)
+    db_session.add(project)
+    base_time = datetime(2026, 7, 1, 12, 0, 0)
+    for i in range(30):
+        db_session.add(
+            APIUsage(
+                user_id=test_user.id,
+                project_id=project.id if i == 29 else None,
+                endpoint=f"/api/v1/inference/call-{i}",
+                request_time=base_time + timedelta(minutes=i),
+                duration_ms=100 + i,
+                status_code=200 if i % 2 == 0 else 500,
+                call_llm=i % 2 == 0,
+            )
+        )
+    db_session.commit()
+
+    login(client)
+    page1 = client.get(f"/admin/users/{test_user.id}")
+    assert page1.status_code == 200
+    # newest first: call-29 (with project) on page 1, oldest calls pushed to page 2
+    assert "/api/v1/inference/call-29" in page1.text
+    assert "Demo Project" in page1.text
+    assert "/api/v1/inference/call-5" in page1.text
+    assert "/api/v1/inference/call-4" not in page1.text
+
+    page2 = client.get(f"/admin/users/{test_user.id}", params={"upage": 2})
+    assert "/api/v1/inference/call-4" in page2.text
+    assert "/api/v1/inference/call-29" not in page2.text
 
 
 def _session_request(session: dict) -> Request:
