@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{% block title %}Talk2DOM Admin{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background-color: #f8fafc;
+        color: #0f172a;
+        margin: 0;
+      }
+      a { color: #2563eb; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .topbar {
+        background: #0f172a;
+        color: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1.5rem;
+      }
+      .topbar .brand { font-weight: 600; color: #f8fafc; }
+      .topbar .nav a { color: #cbd5e1; margin-left: 1rem; }
+      .container { max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
+      .card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.25rem;
+      }
+      table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+      th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #e2e8f0; }
+      th { color: #64748b; font-weight: 600; white-space: nowrap; }
+      tr:hover td { background: #f1f5f9; }
+      .badge {
+        display: inline-block;
+        padding: 0.1rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: #e2e8f0;
+        color: #334155;
+      }
+      .badge.plan-free { background: #e2e8f0; color: #334155; }
+      .badge.plan-developer { background: #dbeafe; color: #1d4ed8; }
+      .badge.plan-pro { background: #ede9fe; color: #6d28d9; }
+      .badge.plan-enterprise { background: #fef3c7; color: #b45309; }
+      .badge.yes { background: #dcfce7; color: #15803d; }
+      .badge.no { background: #fee2e2; color: #b91c1c; }
+      .btn {
+        display: inline-block;
+        background: #0f172a;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        cursor: pointer;
+      }
+      .btn:hover { background: #1e293b; }
+      input[type="text"], input[type="password"], input[type="number"], select {
+        padding: 0.45rem 0.6rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        background: white;
+      }
+      label { font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 0.25rem; }
+      .field { margin-bottom: 1rem; }
+      .banner { border-radius: 6px; padding: 0.6rem 1rem; margin-bottom: 1rem; font-size: 0.875rem; }
+      .banner.success { background: #dcfce7; color: #15803d; }
+      .banner.error { background: #fee2e2; color: #b91c1c; }
+      .muted { color: #64748b; }
+      .stats { display: flex; gap: 1rem; flex-wrap: wrap; }
+      .stat { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 0.75rem 1.25rem; }
+      .stat .num { font-size: 1.4rem; font-weight: 700; }
+      .stat .label { font-size: 0.75rem; color: #64748b; }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <a class="brand" href="/admin/">Talk2DOM Admin</a>
+      <div class="nav">
+        {% if actor is defined and actor %}
+          <span class="muted">{{ actor }}</span>
+          <a href="/admin/logout">Logout</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="container">{% block content %}{% endblock %}</div>
+  </body>
+</html>

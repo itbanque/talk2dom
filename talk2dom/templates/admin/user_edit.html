@@ -1,0 +1,70 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ user.email }} · Talk2DOM Admin{% endblock %}
+{% block content %}
+<p><a href="/admin/">← Back to users</a></p>
+
+{% if saved %}
+<div class="banner success">Saved.</div>
+{% endif %}
+{% if error %}
+<div class="banner error">{{ error }}</div>
+{% endif %}
+
+<div style="display: flex; gap: 1.25rem; align-items: flex-start; flex-wrap: wrap;">
+  <div class="card" style="flex: 1; min-width: 320px;">
+    <h3 style="margin-top: 0;">{{ user.email }}</h3>
+    <form method="post" action="/admin/users/{{ user.id }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="field">
+        <label for="plan">Plan</label>
+        <select id="plan" name="plan">
+          {% for p in plan_choices %}
+          <option value="{{ p }}" {% if user.plan == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="subscription_credits">Subscription credits</label>
+        <input type="number" id="subscription_credits" name="subscription_credits"
+               value="{{ user.subscription_credits }}" min="0" required />
+      </div>
+      <div class="field">
+        <label for="one_time_credits">One-time credits</label>
+        <input type="number" id="one_time_credits" name="one_time_credits"
+               value="{{ user.one_time_credits }}" min="0" required />
+      </div>
+      <div class="field">
+        <label>
+          <input type="checkbox" name="is_active" {% if user.is_active %}checked{% endif %} />
+          Active
+        </label>
+      </div>
+      <div class="field">
+        <label>
+          <input type="checkbox" name="is_admin" {% if user.is_admin %}checked{% endif %} />
+          Admin
+        </label>
+      </div>
+      <button class="btn" type="submit">Save</button>
+    </form>
+  </div>
+
+  <div class="card" style="flex: 1; min-width: 320px;">
+    <h3 style="margin-top: 0;">Details</h3>
+    <table>
+      <tr><th>ID</th><td>{{ user.id }}</td></tr>
+      <tr><th>Name</th><td>{{ user.name or "—" }}</td></tr>
+      <tr><th>Provider</th><td>{{ user.provider or "—" }}</td></tr>
+      <tr><th>Stripe customer</th><td>{{ user.stripe_customer_id or "—" }}</td></tr>
+      <tr><th>Stripe subscription</th><td>{{ user.stripe_subscription_id or "—" }}</td></tr>
+      <tr><th>Subscription status</th><td>{{ user.subscription_status or "—" }}</td></tr>
+      <tr><th>Subscription ends</th><td>{{ user.subscription_end_date.strftime("%Y-%m-%d %H:%M") if user.subscription_end_date else "—" }}</td></tr>
+      <tr><th>Created</th><td>{{ user.created_at.strftime("%Y-%m-%d %H:%M") if user.created_at else "—" }}</td></tr>
+      <tr><th>Last login</th><td>{{ user.last_login.strftime("%Y-%m-%d %H:%M") if user.last_login else "—" }}</td></tr>
+      <tr><th>Projects owned</th><td>{{ stats.projects_owned }}</td></tr>
+      <tr><th>API keys</th><td>{{ stats.api_keys }}</td></tr>
+      <tr><th>API calls (30d)</th><td>{{ stats.usage_30d }}</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}

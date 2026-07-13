@@ -1,0 +1,24 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin Login · Talk2DOM{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 420px; margin: 4rem auto;">
+  <h2 style="margin-top: 0;">Admin Login</h2>
+  {% if error %}
+  <div class="banner error">{{ error }}</div>
+  {% endif %}
+  {% if token_login_enabled %}
+  <form method="post" action="/admin/login">
+    <div class="field">
+      <label for="token">Admin token</label>
+      <input type="password" id="token" name="token" style="width: 100%;" autofocus required />
+    </div>
+    <button class="btn" type="submit">Sign in</button>
+  </form>
+  {% else %}
+  <p class="muted">
+    Token login is disabled. Sign in through the normal app with an admin
+    account, then come back to <a href="/admin/">/admin</a>.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

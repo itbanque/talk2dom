@@ -61,6 +61,7 @@ class User(Base):
     subscription_credits = Column(Integer, default=100)
     one_time_credits = Column(Integer, default=0)
     is_active = Column(Boolean, default=False)
+    is_admin = Column(Boolean, default=False, nullable=False, server_default="false")
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime)
 
