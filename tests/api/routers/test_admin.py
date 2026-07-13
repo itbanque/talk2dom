@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from talk2dom.api.main import app
 from talk2dom.api.limiter import limiter
 from talk2dom.api.routers.admin import require_admin
-from talk2dom.db.models import APIUsage, Base, HTML, Project, User
+from talk2dom.db.models import APIUsage, Base, HTML, Project, UILocatorCache, User
 from talk2dom.api.deps import get_db
 
 ADMIN_TOKEN = "test-admin-token"
@@ -378,6 +378,67 @@ def test_delete_usage_record(client, db_session, test_user, usage_with_snapshot)
     assert resp.status_code == 303
     assert resp.headers["location"] == f"/admin/users/{test_user.id}"
     assert db_session.query(APIUsage).count() == 0
+
+
+@pytest.fixture
+def cache_entry(db_session, test_user):
+    project = Project(id=uuid.uuid4(), name="lizong", owner_id=test_user.id)
+    html_id = "b" * 64
+    db_session.add(project)
+    db_session.add(
+        HTML(
+            id=html_id,
+            url="https://claude.ai/new",
+            backbone="<html><body><button id='voice'>Voice</button></body></html>",
+            row_html="<html><body><button id='voice'>Voice</button></body></html>",
+        )
+    )
+    entry = UILocatorCache(
+        id="c" * 64,
+        url="https://claude.ai/new",
+        user_instruction="locate the voice mode button",
+        html_id=html_id,
+        selector_type="css selector",
+        selector_value="button#voice",
+        action="click:",
+        project_id=project.id,
+    )
+    db_session.add(entry)
+    db_session.commit()
+    return entry
+
+
+def test_user_page_shows_cached_locators(client, cache_entry, test_user):
+    login(client)
+    page = client.get(f"/admin/users/{test_user.id}")
+    assert page.status_code == 200
+    assert "locate the voice mode button" in page.text
+    assert "css selector=button#voice" in page.text
+    assert f"/admin/cache/{cache_entry.id}/snapshot" in page.text
+
+
+def test_cache_snapshot_renders_with_highlight(client, cache_entry):
+    login(client)
+    resp = client.get(f"/admin/cache/{cache_entry.id}/snapshot")
+    assert resp.status_code == 200
+    assert resp.headers["content-security-policy"] == "sandbox allow-scripts"
+    assert "<button id='voice'>Voice</button>" in resp.text
+    assert '"button#voice"' in resp.text
+
+
+def test_delete_cache_entry(client, db_session, test_user, cache_entry):
+    login(client)
+    page = client.get(f"/admin/users/{test_user.id}")
+    csrf = re.search(r'name="csrf_token" value="([0-9a-f]+)"', page.text).group(1)
+
+    resp = client.post(
+        f"/admin/cache/{cache_entry.id}/delete",
+        data={"csrf_token": csrf, "user_id": str(test_user.id)},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/admin/users/{test_user.id}"
+    assert db_session.query(UILocatorCache).count() == 0
 
 
 def _session_request(session: dict) -> Request:

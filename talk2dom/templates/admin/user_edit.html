@@ -70,6 +70,65 @@
 </div>
 
 <div class="card">
+  <h3 style="margin-top: 0;">Located elements <span class="muted" style="font-weight: normal;">({{ cache_total }} cached locators across the user's projects)</span></h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Instruction</th>
+        <th>Page URL</th>
+        <th>Locator</th>
+        <th>Action</th>
+        <th>Project</th>
+        <th>Updated</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in cache_entries %}
+      <tr>
+        <td class="trunc" title="{{ c.user_instruction }}">{{ c.user_instruction }}</td>
+        <td class="trunc" title="{{ c.url }}">{% if c.url %}<a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">{{ c.url }}</a>{% else %}—{% endif %}</td>
+        <td class="trunc" style="max-width: 300px;" title="{{ c.selector_type }}={{ c.selector_value }}"><code>{{ c.selector_type }}={{ c.selector_value }}</code></td>
+        <td>{{ c.action if c.action and c.action != ":" else "—" }}</td>
+        <td>{{ c.project.name if c.project else "—" }}</td>
+        <td class="muted" style="white-space: nowrap;">{{ c.updated_at.strftime("%Y-%m-%d %H:%M") if c.updated_at else "—" }}</td>
+        <td style="white-space: nowrap;">
+          <button type="button" class="linkbtn" onclick="openDetail(this)"
+                  data-snapshot-url="/admin/cache/{{ c.id }}/snapshot"
+                  data-instruction="{{ c.user_instruction }}"
+                  data-url="{{ c.url or '' }}"
+                  data-locator="{{ c.selector_type }}={{ c.selector_value }}"
+                  data-action="{{ c.action if c.action and c.action != ':' else '' }}">Detail</button>
+          <form method="post" action="/admin/cache/{{ c.id }}/delete" style="display: inline; margin-left: 0.5rem;"
+                onsubmit="return confirm('Delete this cached locator?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <input type="hidden" name="user_id" value="{{ user.id }}" />
+            <button type="submit" class="linkbtn danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">No cached locators for this user's projects.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="margin-top: 1rem; display: flex; justify-content: space-between;">
+    <span>
+      {% if cpage > 1 %}
+      <a href="/admin/users/{{ user.id }}?cpage={{ cpage - 1 }}">← Prev</a>
+      {% endif %}
+    </span>
+    <span class="muted">page {{ cpage }}</span>
+    <span>
+      {% if cache_has_next %}
+      <a href="/admin/users/{{ user.id }}?cpage={{ cpage + 1 }}">Next →</a>
+      {% endif %}
+    </span>
+  </div>
+</div>
+
+<div class="card">
   <h3 style="margin-top: 0;">Usage history <span class="muted" style="font-weight: normal;">({{ stats.usage_total }} calls)</span></h3>
   <table>
     <thead>
@@ -99,7 +158,7 @@
         <td><span class="badge {{ 'yes' if u.status_code == 200 else 'no' }}">{{ u.status_code or "—" }}</span></td>
         <td style="white-space: nowrap;">
           <button type="button" class="linkbtn" onclick="openDetail(this)"
-                  data-usage-id="{{ u.id }}"
+                  data-snapshot-url="/admin/usage/{{ u.id }}/snapshot"
                   data-instruction="{{ m.user_instruction or '' }}"
                   data-url="{{ m.url or '' }}"
                   data-locator="{% if m.selector_value %}{{ m.selector_type }}={{ m.selector_value }}{% endif %}"
@@ -156,7 +215,7 @@
     document.getElementById("modal-url").textContent = d.url || "";
     document.getElementById("modal-locator").textContent = d.locator || "no locator recorded";
     document.getElementById("modal-action").textContent = d.action ? "action: " + d.action : "";
-    document.getElementById("modal-frame").src = "/admin/usage/" + d.usageId + "/snapshot";
+    document.getElementById("modal-frame").src = d.snapshotUrl;
     document.getElementById("detail-modal").style.display = "block";
   }
   function closeDetail() {

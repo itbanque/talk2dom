@@ -14,7 +14,16 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from talk2dom.api.limiter import limiter
-from talk2dom.db.models import APIKey, APIUsage, HTML, Project, User
+from talk2dom.db.cache import invalidate_locator_cache
+from talk2dom.db.models import (
+    APIKey,
+    APIUsage,
+    HTML,
+    Project,
+    ProjectMembership,
+    UILocatorCache,
+    User,
+)
 from talk2dom.db.session import get_db
 
 from loguru import logger
@@ -231,6 +240,20 @@ def _get_usage_or_404(db: Session, usage_id: str) -> APIUsage:
     return usage
 
 
+def _snapshot_response(db: Session, html_id: Optional[str], meta: dict) -> HTMLResponse:
+    # 快照始终以 sandbox 方式返回:即使直接打开 URL,用户提交的 HTML 也无法在 admin 域执行脚本
+    headers = {"Content-Security-Policy": "sandbox allow-scripts"}
+    html_row = db.query(HTML).filter(HTML.id == html_id).first() if html_id else None
+    if not html_row or not html_row.row_html:
+        return HTMLResponse(
+            "<body style='font-family:system-ui;color:#64748b;display:flex;"
+            "align-items:center;justify-content:center;height:100vh;margin:0;'>"
+            "No page snapshot available for this call.</body>",
+            headers=headers,
+        )
+    return HTMLResponse(_build_snapshot_doc(html_row.row_html, meta), headers=headers)
+
+
 @router.get("/usage/{usage_id}/snapshot")
 def usage_snapshot(
     usage_id: str,
@@ -240,19 +263,51 @@ def usage_snapshot(
 ):
     usage = _get_usage_or_404(db, usage_id)
     meta = usage.meta_data or {}
-    # 快照始终以 sandbox 方式返回:即使直接打开 URL,用户提交的 HTML 也无法在 admin 域执行脚本
-    headers = {"Content-Security-Policy": "sandbox allow-scripts"}
-    html_row = None
-    if meta.get("html_id"):
-        html_row = db.query(HTML).filter(HTML.id == meta["html_id"]).first()
-    if not html_row or not html_row.row_html:
-        return HTMLResponse(
-            "<body style='font-family:system-ui;color:#64748b;display:flex;"
-            "align-items:center;justify-content:center;height:100vh;margin:0;'>"
-            "No page snapshot available for this call.</body>",
-            headers=headers,
-        )
-    return HTMLResponse(_build_snapshot_doc(html_row.row_html, meta), headers=headers)
+    return _snapshot_response(db, meta.get("html_id"), meta)
+
+
+def _get_cache_or_404(db: Session, cache_id: str) -> UILocatorCache:
+    row = db.query(UILocatorCache).filter(UILocatorCache.id == cache_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Locator not found")
+    return row
+
+
+@router.get("/cache/{cache_id}/snapshot")
+def cache_snapshot(
+    cache_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    row = _get_cache_or_404(db, cache_id)
+    meta = {
+        "url": row.url,
+        "selector_type": row.selector_type,
+        "selector_value": row.selector_value,
+    }
+    return _snapshot_response(db, row.html_id, meta)
+
+
+@router.post("/cache/{cache_id}/delete")
+async def delete_cache_entry(
+    cache_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    form = await _parse_form(request)
+    _check_csrf(request, form.get("csrf_token", ""))
+    row = _get_cache_or_404(db, cache_id)
+    db.delete(row)
+    db.commit()
+    invalidate_locator_cache(cache_id)
+    logger.info(f"[admin:{actor}] deleted locator cache entry {cache_id}")
+    try:
+        back_user = uuid.UUID(form.get("user_id", ""))
+        return RedirectResponse(url=f"/admin/users/{back_user}", status_code=303)
+    except ValueError:
+        return RedirectResponse(url="/admin/", status_code=303)
 
 
 @router.post("/usage/{usage_id}/delete")
@@ -292,6 +347,7 @@ def edit_user_page(
     saved: int = Query(default=0),
     error: str = Query(default=""),
     upage: int = Query(default=1, ge=1),
+    cpage: int = Query(default=1, ge=1),
 ):
     user = _get_user_or_404(db, user_id)
     month_ago = datetime.utcnow() - timedelta(days=30)
@@ -313,6 +369,28 @@ def edit_user_page(
         .limit(USAGE_PAGE_SIZE)
         .all()
     )
+
+    # 用户所属项目(owner + member)下缓存的 locator:前端 Detail/Delete 列表就是这份数据
+    project_ids = {
+        row[0] for row in db.query(Project.id).filter(Project.owner_id == user.id).all()
+    } | {
+        row[0]
+        for row in db.query(ProjectMembership.project_id)
+        .filter(ProjectMembership.user_id == user.id)
+        .all()
+    }
+    cache_query = db.query(UILocatorCache).filter(
+        UILocatorCache.project_id.in_(project_ids)
+    )
+    cache_total = cache_query.count()
+    cache_entries = (
+        cache_query.options(joinedload(UILocatorCache.project))
+        .order_by(UILocatorCache.updated_at.desc())
+        .offset((cpage - 1) * USAGE_PAGE_SIZE)
+        .limit(USAGE_PAGE_SIZE)
+        .all()
+    )
+
     return templates.TemplateResponse(
         "admin/user_edit.html",
         {
@@ -323,6 +401,10 @@ def edit_user_page(
             "usages": usages,
             "upage": upage,
             "usage_has_next": upage * USAGE_PAGE_SIZE < stats["usage_total"],
+            "cache_entries": cache_entries,
+            "cache_total": cache_total,
+            "cpage": cpage,
+            "cache_has_next": cpage * USAGE_PAGE_SIZE < cache_total,
             "plan_choices": PLAN_CHOICES,
             "csrf_token": _csrf_token(request),
             "saved": saved,

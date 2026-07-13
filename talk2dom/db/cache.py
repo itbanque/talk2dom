@@ -141,6 +141,14 @@ def locator_exists(locator_id) -> bool:
         session.close()
 
 
+def invalidate_locator_cache(locator_id: str) -> None:
+    """Drop the Redis entry for a locator (used when admin deletes a cache row)."""
+    try:
+        _redis().delete(_locator_key(locator_id))
+    except Exception as e:
+        logger.warning(f"Redis invalidate failed for {locator_id}: {e}")
+
+
 def save_locator(
     instruction: str,
     html_backbone: str,
