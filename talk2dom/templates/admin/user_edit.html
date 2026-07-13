@@ -75,27 +75,44 @@
     <thead>
       <tr>
         <th>Time</th>
-        <th>Endpoint</th>
+        <th>Instruction</th>
+        <th>Page URL</th>
+        <th>Locator</th>
         <th>Project</th>
+        <th>Source</th>
         <th>Status</th>
-        <th>Duration</th>
-        <th>LLM</th>
-        <th>Tokens in / out</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for u in usages %}
+      {% set m = u.meta_data or {} %}
       <tr>
-        <td class="muted" style="white-space: nowrap;">{{ u.request_time.strftime("%Y-%m-%d %H:%M:%S") if u.request_time else "—" }}</td>
-        <td>{{ u.endpoint }}</td>
+        <td class="muted" style="white-space: nowrap;" title="{{ u.endpoint }}">{{ u.request_time.strftime("%Y-%m-%d %H:%M:%S") if u.request_time else "—" }}</td>
+        <td class="trunc" title="{{ m.user_instruction or '' }}">{{ m.user_instruction or "—" }}</td>
+        <td class="trunc" title="{{ m.url or '' }}">{% if m.url %}<a href="{{ m.url }}" target="_blank" rel="noopener noreferrer">{{ m.url }}</a>{% else %}—{% endif %}</td>
+        <td class="trunc" style="max-width: 300px;" title="{{ m.selector_type }}={{ m.selector_value }}">
+          {% if m.selector_value %}<code>{{ m.selector_type }}={{ m.selector_value }}</code>{% else %}—{% endif %}
+        </td>
         <td>{{ u.project.name if u.project else "—" }}</td>
+        <td><span class="badge">{{ "cache" if m.cache_hit else ("llm" if u.call_llm else "—") }}</span></td>
         <td><span class="badge {{ 'yes' if u.status_code == 200 else 'no' }}">{{ u.status_code or "—" }}</span></td>
-        <td>{{ u.duration_ms ~ " ms" if u.duration_ms is not none else "—" }}</td>
-        <td>{{ "yes" if u.call_llm else "—" }}</td>
-        <td>{{ u.input_tokens if u.input_tokens is not none else "—" }} / {{ u.output_tokens if u.output_tokens is not none else "—" }}</td>
+        <td style="white-space: nowrap;">
+          <button type="button" class="linkbtn" onclick="openDetail(this)"
+                  data-usage-id="{{ u.id }}"
+                  data-instruction="{{ m.user_instruction or '' }}"
+                  data-url="{{ m.url or '' }}"
+                  data-locator="{% if m.selector_value %}{{ m.selector_type }}={{ m.selector_value }}{% endif %}"
+                  data-action="{% if m.action_type %}{{ m.action_type }}{% if m.action_value %}: {{ m.action_value }}{% endif %}{% endif %}">Detail</button>
+          <form method="post" action="/admin/usage/{{ u.id }}/delete" style="display: inline; margin-left: 0.5rem;"
+                onsubmit="return confirm('Delete this usage record?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button type="submit" class="linkbtn danger">Delete</button>
+          </form>
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="7" class="muted">No usage recorded.</td></tr>
+      <tr><td colspan="9" class="muted">No usage recorded.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -114,4 +131,40 @@
     </span>
   </div>
 </div>
+
+<div id="detail-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 100; padding: 1.5rem;" onclick="if (event.target === this) closeDetail();">
+  <div style="background: white; border-radius: 8px; max-width: 1100px; height: 100%; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden;">
+    <div style="padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+      <div style="min-width: 0;">
+        <div id="modal-instruction" style="font-weight: 600;"></div>
+        <div id="modal-url" class="muted" style="font-size: 0.8rem; margin-top: 0.15rem;"></div>
+        <div style="margin-top: 0.5rem;">
+          <code id="modal-locator"></code>
+          <span id="modal-action" class="muted" style="margin-left: 0.5rem;"></span>
+        </div>
+      </div>
+      <button class="btn" type="button" onclick="closeDetail()">Close</button>
+    </div>
+    <iframe id="modal-frame" sandbox="allow-scripts" style="flex: 1; width: 100%; border: 0; background: white;"></iframe>
+  </div>
+</div>
+
+<script>
+  function openDetail(btn) {
+    var d = btn.dataset;
+    document.getElementById("modal-instruction").textContent = d.instruction || "(no instruction recorded)";
+    document.getElementById("modal-url").textContent = d.url || "";
+    document.getElementById("modal-locator").textContent = d.locator || "no locator recorded";
+    document.getElementById("modal-action").textContent = d.action ? "action: " + d.action : "";
+    document.getElementById("modal-frame").src = "/admin/usage/" + d.usageId + "/snapshot";
+    document.getElementById("detail-modal").style.display = "block";
+  }
+  function closeDetail() {
+    document.getElementById("detail-modal").style.display = "none";
+    document.getElementById("modal-frame").src = "about:blank";
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeDetail();
+  });
+</script>
 {% endblock %}

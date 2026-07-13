@@ -75,6 +75,29 @@
       .banner.success { background: #dcfce7; color: #15803d; }
       .banner.error { background: #fee2e2; color: #b91c1c; }
       .muted { color: #64748b; }
+      .linkbtn {
+        background: none;
+        border: none;
+        padding: 0;
+        font: inherit;
+        font-size: 0.875rem;
+        color: #2563eb;
+        cursor: pointer;
+      }
+      .linkbtn:hover { text-decoration: underline; }
+      .linkbtn.danger { color: #dc2626; }
+      .trunc {
+        max-width: 240px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      code {
+        background: #f1f5f9;
+        border-radius: 4px;
+        padding: 0.1rem 0.3rem;
+        font-size: 0.8rem;
+      }
       .stats { display: flex; gap: 1rem; flex-wrap: wrap; }
       .stat { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 0.75rem 1.25rem; }
       .stat .num { font-size: 1.4rem; font-weight: 700; }

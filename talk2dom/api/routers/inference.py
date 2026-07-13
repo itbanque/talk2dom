@@ -1,3 +1,4 @@
+import hashlib
 import os
 
 from fastapi import APIRouter, Depends, Request
@@ -29,6 +30,12 @@ router = APIRouter()  #
 
 MODEL_NAME = os.environ.get("TALK2DOM_MODEL_NAME")
 PROVIDER_NAME = os.environ.get("TALK2DOM_MODEL_PROVIDER_NAME")
+
+
+def _html_id(url_path: str, structure_html: str) -> str:
+    # 与 db.cache 的 html_id 计算保持一致,让 usage 记录能关联到 HTML 快照
+    src = (url_path or "").strip() or (structure_html or "")
+    return hashlib.sha256(src.encode("utf-8")).hexdigest()
 
 
 @router.post("/locator", response_model=LocatorResponse)
@@ -63,6 +70,13 @@ def locate(
     parsed = parsed._replace(query="")
     url_path = urlunparse(parsed)
 
+    usage_meta = {
+        "url": url_path,
+        "user_instruction": req.user_instruction,
+        "html_id": _html_id(url_path, structure_html),
+    }
+    request.state.usage_metadata = usage_meta
+
     selector_type, selector_value, action = get_cached_locator(
         req.user_instruction, structure_html, url_path, project_id
     )
@@ -73,6 +87,15 @@ def locate(
             )
             action_type, action_value = (
                 action.split(":") if action and action.find(":") >= 0 else ("", "")
+            )
+            usage_meta.update(
+                {
+                    "selector_type": selector_type,
+                    "selector_value": selector_value,
+                    "action_type": action_type,
+                    "action_value": action_value,
+                    "cache_hit": True,
+                }
             )
             return LocatorResponse(
                 action_type=action_type,
@@ -104,6 +127,15 @@ def locate(
     )
     request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
     request.state.output_tokens = len(selector_type) + len(selector_value)
+    usage_meta.update(
+        {
+            "selector_type": selector_type,
+            "selector_value": selector_value,
+            "action_type": action_type,
+            "action_value": action_value,
+            "cache_hit": False,
+        }
+    )
 
     if verifier.verify(selector_type, selector_value):
         logger.info(
@@ -162,6 +194,13 @@ def locate_playground(
     url_path = urlunparse(parsed)
 
     request.state.call_llm = False
+    usage_meta = {
+        "url": url_path,
+        "user_instruction": req.user_instruction,
+        "html_id": _html_id(url_path, structure_html),
+    }
+    request.state.usage_metadata = usage_meta
+
     selector_type, selector_value, action = get_cached_locator(
         req.user_instruction, structure_html, url_path
     )
@@ -172,6 +211,15 @@ def locate_playground(
             )
             action_type, action_value = (
                 action.split(":") if action and action.find(":") >= 0 else ("", "")
+            )
+            usage_meta.update(
+                {
+                    "selector_type": selector_type,
+                    "selector_value": selector_value,
+                    "action_type": action_type,
+                    "action_value": action_value,
+                    "cache_hit": True,
+                }
             )
             return LocatorResponse(
                 action_type=action_type,
@@ -202,6 +250,15 @@ def locate_playground(
     )
     request.state.input_tokens = len(req.user_instruction) + len(cleaned_html)
     request.state.output_tokens = len(selector_type) + len(selector_value)
+    usage_meta.update(
+        {
+            "selector_type": selector_type,
+            "selector_value": selector_value,
+            "action_type": action_type,
+            "action_value": action_value,
+            "cache_hit": False,
+        }
+    )
 
     if verifier.verify(selector_type, selector_value):
         logger.info(

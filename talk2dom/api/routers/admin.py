@@ -1,18 +1,20 @@
+import json
 import os
 import secrets
 import uuid
 from datetime import datetime, timedelta
+from html import escape as html_escape
 from typing import Optional
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from talk2dom.api.limiter import limiter
-from talk2dom.db.models import APIKey, APIUsage, Project, User
+from talk2dom.db.models import APIKey, APIUsage, HTML, Project, User
 from talk2dom.db.session import get_db
 
 from loguru import logger
@@ -160,6 +162,114 @@ def list_users(
             "plan_choices": PLAN_CHOICES,
         },
     )
+
+
+# 注入到页面快照里的高亮脚本;__TYPE__/__VALUE__ 由 json.dumps 替换
+_HIGHLIGHT_SNIPPET = """
+<script>
+(function () {
+  var t = __TYPE__, v = __VALUE__;
+  function find() {
+    try {
+      if (!v) return null;
+      if (t === "xpath") {
+        return document.evaluate(
+          v, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+        ).singleNodeValue;
+      }
+      if (t === "id") return document.getElementById(v);
+      if (t === "class name") return document.querySelector("." + v);
+      if (t === "name") return document.querySelector("[name='" + v + "']");
+      return document.querySelector(v);
+    } catch (e) { return null; }
+  }
+  function ready() {
+    var el = find();
+    var banner = document.createElement("div");
+    banner.style.cssText =
+      "position:fixed;top:0;left:0;right:0;z-index:2147483647;" +
+      "padding:6px 12px;font:13px system-ui;color:#fff;";
+    if (el) {
+      el.style.outline = "3px solid #ef4444";
+      el.style.outlineOffset = "2px";
+      el.scrollIntoView({block: "center", inline: "center"});
+      banner.style.background = "#16a34a";
+      banner.textContent = "Element found: " + t + " = " + v;
+    } else {
+      banner.style.background = "#dc2626";
+      banner.textContent = "Element NOT found in snapshot: " + t + " = " + v;
+    }
+    document.body.appendChild(banner);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", ready);
+  } else {
+    ready();
+  }
+})();
+</script>
+"""
+
+
+def _build_snapshot_doc(row_html: str, meta: dict) -> str:
+    page_url = meta.get("url") or ""
+    base_tag = f'<base href="{html_escape(page_url, quote=True)}">' if page_url else ""
+    script = _HIGHLIGHT_SNIPPET.replace(
+        "__TYPE__", json.dumps(meta.get("selector_type") or "")
+    ).replace("__VALUE__", json.dumps(meta.get("selector_value") or ""))
+    return base_tag + row_html + script
+
+
+def _get_usage_or_404(db: Session, usage_id: str) -> APIUsage:
+    try:
+        uid = uuid.UUID(usage_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Usage record not found")
+    usage = db.query(APIUsage).filter(APIUsage.id == uid).first()
+    if not usage:
+        raise HTTPException(status_code=404, detail="Usage record not found")
+    return usage
+
+
+@router.get("/usage/{usage_id}/snapshot")
+def usage_snapshot(
+    usage_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    usage = _get_usage_or_404(db, usage_id)
+    meta = usage.meta_data or {}
+    # 快照始终以 sandbox 方式返回:即使直接打开 URL,用户提交的 HTML 也无法在 admin 域执行脚本
+    headers = {"Content-Security-Policy": "sandbox allow-scripts"}
+    html_row = None
+    if meta.get("html_id"):
+        html_row = db.query(HTML).filter(HTML.id == meta["html_id"]).first()
+    if not html_row or not html_row.row_html:
+        return HTMLResponse(
+            "<body style='font-family:system-ui;color:#64748b;display:flex;"
+            "align-items:center;justify-content:center;height:100vh;margin:0;'>"
+            "No page snapshot available for this call.</body>",
+            headers=headers,
+        )
+    return HTMLResponse(_build_snapshot_doc(html_row.row_html, meta), headers=headers)
+
+
+@router.post("/usage/{usage_id}/delete")
+async def delete_usage(
+    usage_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    form = await _parse_form(request)
+    _check_csrf(request, form.get("csrf_token", ""))
+    usage = _get_usage_or_404(db, usage_id)
+    user_id = usage.user_id
+    db.delete(usage)
+    db.commit()
+    logger.info(f"[admin:{actor}] deleted usage record {usage_id} of user {user_id}")
+    return RedirectResponse(url=f"/admin/users/{user_id}", status_code=303)
 
 
 def _get_user_or_404(db: Session, user_id: str) -> User:
