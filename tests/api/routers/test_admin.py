@@ -672,6 +672,94 @@ def test_admin_delete_api_key(client, db_session, test_user):
     assert db_session.query(APIKey).count() == 0
 
 
+def _list_csrf(client):
+    page = client.get("/admin/")
+    return re.search(r'name="csrf_token" value="([0-9a-f]+)"', page.text).group(1)
+
+
+def test_admin_create_user_with_password(client, db_session):
+    from talk2dom.api.utils import hash_helper
+
+    login(client)
+    csrf = _list_csrf(client)
+
+    resp = client.post(
+        "/admin/create-user",
+        data={
+            "csrf_token": csrf,
+            "email": "Manual@Example.com",
+            "password": "s3cret-pass",
+            "name": "Manual User",
+            "plan": "pro",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    user = db_session.query(User).filter_by(email="manual@example.com").one()
+    assert resp.headers["location"] == f"/admin/users/{user.id}?saved=1"
+    assert user.provider == "credentials"
+    assert user.provider_user_id == "local:manual@example.com"
+    assert user.plan == "pro"
+    assert user.is_active is True
+    assert hash_helper.verify_password("s3cret-pass", user.hashed_password)
+
+    # duplicate email rejected
+    resp = client.post(
+        "/admin/create-user",
+        data={"csrf_token": csrf, "email": "manual@example.com", "password": "x" * 8},
+        follow_redirects=False,
+    )
+    assert "error=Email+already+registered" in resp.headers["location"]
+
+    # short password rejected
+    resp = client.post(
+        "/admin/create-user",
+        data={"csrf_token": csrf, "email": "another@example.com", "password": "short"},
+        follow_redirects=False,
+    )
+    assert "error=" in resp.headers["location"]
+    assert db_session.query(User).filter_by(email="another@example.com").count() == 0
+
+
+def test_admin_create_user_accepts_pending_invites(client, db_session, test_user):
+    test_user.plan = "pro"  # inviter plan gates pending-invite acceptance
+    project = Project(id=uuid.uuid4(), name="team", owner_id=test_user.id)
+    db_session.add_all(
+        [
+            project,
+            ProjectMembership(
+                user_id=test_user.id, project_id=project.id, role="owner"
+            ),
+            ProjectInvite(
+                project_id=project.id,
+                email="invited@example.com",
+                invited_by_user_id=test_user.id,
+            ),
+        ]
+    )
+    db_session.commit()
+    login(client)
+    csrf = _list_csrf(client)
+
+    resp = client.post(
+        "/admin/create-user",
+        data={
+            "csrf_token": csrf,
+            "email": "invited@example.com",
+            "password": "s3cret-pass",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    new_user = db_session.query(User).filter_by(email="invited@example.com").one()
+    assert (
+        db_session.query(ProjectMembership)
+        .filter_by(user_id=new_user.id, project_id=project.id)
+        .count()
+        == 1
+    )
+
+
 def _session_request(session: dict) -> Request:
     return Request({"type": "http", "session": session, "headers": []})
 

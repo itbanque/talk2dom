@@ -14,6 +14,26 @@
   {% endfor %}
 </div>
 
+{% if error %}
+<div class="banner error">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+  <h3 style="margin-top: 0;">Create user <span class="muted" style="font-weight: normal;">(email + password, no OAuth)</span></h3>
+  <form method="post" action="/admin/create-user" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="text" name="email" placeholder="user@example.com" required style="flex: 1; min-width: 200px;" />
+    <input type="password" name="password" placeholder="Password (min 8 chars)" required minlength="8" style="flex: 1; min-width: 180px;" />
+    <input type="text" name="name" placeholder="Name (optional)" style="flex: 1; min-width: 140px;" />
+    <select name="plan">
+      {% for p in plan_choices %}
+      <option value="{{ p }}">{{ p }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">Create user</button>
+  </form>
+</div>
+
 <div class="card">
   <form method="get" action="/admin/" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
     <input type="text" name="q" value="{{ q }}" placeholder="Search email or name…" style="flex: 1;" />

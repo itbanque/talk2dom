@@ -14,7 +14,9 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import false, func, or_
 from sqlalchemy.orm import Session
 
+from talk2dom.api.deps import handle_pending_invites
 from talk2dom.api.limiter import limiter
+from talk2dom.api.utils import hash_helper
 from talk2dom.db.cache import compute_locator_id, invalidate_locator_cache
 from talk2dom.db.models import (
     APIKey,
@@ -139,6 +141,7 @@ def list_users(
     q: str = Query(default=""),
     plan: str = Query(default=""),
     page: int = Query(default=1, ge=1),
+    error: str = Query(default=""),
 ):
     query = db.query(User)
     if q:
@@ -171,8 +174,57 @@ def list_users(
             "total": total,
             "plan_counts": plan_counts,
             "plan_choices": PLAN_CHOICES,
+            "csrf_token": _csrf_token(request),
+            "error": error,
         },
     )
+
+
+@router.post("/create-user")
+async def admin_create_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_admin),
+):
+    form = await _parse_form(request)
+    _check_csrf(request, form.get("csrf_token", ""))
+
+    email = form.get("email", "").strip().lower()
+    password = form.get("password", "")
+    name = form.get("name", "").strip() or None
+    plan = form.get("plan", "free")
+    if plan not in PLAN_CHOICES:
+        plan = "free"
+
+    if not email or "@" not in email:
+        return RedirectResponse(
+            url="/admin/?error=Valid+email+required", status_code=303
+        )
+    if len(password) < 8:
+        return RedirectResponse(
+            url="/admin/?error=Password+must+be+at+least+8+characters", status_code=303
+        )
+    if db.query(User).filter(User.email == email).first():
+        return RedirectResponse(
+            url="/admin/?error=Email+already+registered", status_code=303
+        )
+
+    # 与邮箱注册同一套字段;admin 创建的账户直接激活,跳过邮箱验证
+    user = User(
+        email=email,
+        provider_user_id=f"local:{email}",
+        hashed_password=hash_helper.hash_password(password),
+        provider="credentials",
+        name=name,
+        plan=plan,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    handle_pending_invites(db, user)
+    logger.info(f"[admin:{actor}] created user {email} (plan={plan})")
+    return RedirectResponse(url=f"/admin/users/{user.id}?saved=1", status_code=303)
 
 
 # 注入到页面快照里的高亮脚本;__TYPE__/__VALUE__ 由 json.dumps 替换
