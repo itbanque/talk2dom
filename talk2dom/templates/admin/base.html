@@ -115,5 +115,29 @@
       </div>
     </div>
     <div class="container">{% block content %}{% endblock %}</div>
+    <script>
+      function copyText(btn) {
+        var text = btn.dataset.copy;
+        function done() {
+          var old = btn.textContent;
+          btn.textContent = "Copied!";
+          btn.disabled = true;
+          setTimeout(function () { btn.textContent = old; btn.disabled = false; }, 1200);
+        }
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(done);
+        } else {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          done();
+        }
+      }
+    </script>
   </body>
 </html>

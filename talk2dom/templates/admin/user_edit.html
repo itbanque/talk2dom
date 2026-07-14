@@ -146,6 +146,7 @@
     <thead>
       <tr>
         <th>Name</th>
+        <th>ID</th>
         <th>Role</th>
         <th>Members</th>
         <th>Pending invites</th>
@@ -156,7 +157,11 @@
     <tbody>
       {% for p in projects %}
       <tr>
-        <td title="{{ p.id }}">{{ p.name }}</td>
+        <td>{{ p.name }}</td>
+        <td style="white-space: nowrap;">
+          <code title="{{ p.id }}">{{ (p.id | string)[:8] }}…</code>
+          <button type="button" class="linkbtn" data-copy="{{ p.id }}" onclick="copyText(this)">Copy</button>
+        </td>
         <td><span class="badge">{{ "owner" if p.owner_id == user.id else "member" }}</span></td>
         <td>
           {% for m in members_by_project.get(p.id, []) %}
@@ -190,7 +195,7 @@
         <td class="muted">{{ p.created_at.strftime("%Y-%m-%d") if p.created_at else "—" }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="muted">No projects.</td></tr>
+      <tr><td colspan="7" class="muted">No projects.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -235,8 +240,9 @@
         <td class="trunc" style="max-width: 320px;" title="{{ k.key }}"><code>{{ k.key }}</code></td>
         <td><span class="badge {{ 'yes' if k.is_active else 'no' }}">{{ "yes" if k.is_active else "no" }}</span></td>
         <td class="muted">{{ k.created_at.strftime("%Y-%m-%d %H:%M") if k.created_at else "—" }}</td>
-        <td>
-          <form method="post" action="/admin/api-keys/{{ k.id }}/delete" style="display: inline;"
+        <td style="white-space: nowrap;">
+          <button type="button" class="linkbtn" data-copy="{{ k.key }}" onclick="copyText(this)">Copy</button>
+          <form method="post" action="/admin/api-keys/{{ k.id }}/delete" style="display: inline; margin-left: 0.5rem;"
                 onsubmit="return confirm('Delete this API key? Clients using it will stop working.');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
             <input type="hidden" name="user_id" value="{{ user.id }}" />
