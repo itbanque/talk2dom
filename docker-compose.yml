@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:15
@@ -12,6 +10,11 @@ services:
       POSTGRES_DB: talk2dom
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d talk2dom"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -29,12 +32,16 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       T2D_REDIS_URL: redis://redis:6379/0
+      TALK2DOM_DB_URI: postgresql://admin:secret@postgres:5432/talk2dom
 
 volumes:
   postgres_data:

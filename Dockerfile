@@ -27,7 +27,11 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry install --no-ansi --only main --no-root
 
 COPY ./talk2dom ./talk2dom
+COPY alembic.ini ./
+COPY ./alembic ./alembic
 
 EXPOSE 8000
 
-CMD ["uvicorn", "talk2dom.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Fresh DB (no alembic_version yet): stamp head, the app's create_all builds the schema.
+# Existing DB: apply pending migrations.
+CMD ["sh", "-c", "if [ -n \"$(alembic current)\" ]; then alembic upgrade head; else alembic stamp head; fi && exec uvicorn talk2dom.api.main:app --host 0.0.0.0 --port 8000"]
